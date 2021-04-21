@@ -7,7 +7,6 @@
 #include "nav_msgs/Odometry.h"
 #include "tf/transform_datatypes.h"
 
-//Probs not needed---------------------------------------------
 #include <image_transport/image_transport.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <cv_bridge/cv_bridge.h>
@@ -30,33 +29,17 @@ public:
     TurtleFollow(ros::NodeHandle nh);
     ~TurtleFollow();
 
-    void robotControl(); //might need to go in private functions-----------------------------
-
     ros::NodeHandle nh_;
 
 private:
-    void tagCallback(const ar_track_alvar::AlvarMarkerConstPtr &msg);
     void laserCallback(const sensor_msgs::LaserScanConstPtr &msg);
     void odomCallback(const nav_msgs::OdometryConstPtr &msg);
-    bool obstructionDetection();
-    void basicController(double centreDistance, double range);
 
-    ros::Subscriber odomSub_;
-    ros::Subscriber laserSub_;
-    ros::Subscriber tagSub_;
+    ros::Subscriber odom_sub_;
+    ros::Subscriber laser_sub_;
     ros::Publisher cmd_vel_pub_;
+    image_transport::ImageTransport it_; //Not used?---------------------------
+    image_transport::Publisher image_pub_; //Check if used- use for debugging------
+    image_transport::Subscriber image_sub_;
     geometry_msgs::Pose tagPose;
-    
-
-    struct Robot
-    {
-        const double radius_ = 0.22;
-        const double max_vel_ = 0.22;
-        bool obstacle_;
-        geometry_msgs::Twist control_;
-        std::vector<float> ranges_;
-        std::mutex mtx_; //Do we need to multithread?-------------------------------
-    };
-
-    Robot robot_;
 }
