@@ -23,15 +23,18 @@
 #include <vector>
 
 //Delete what is not used-------------------------------------------------
-class TurtleFollow
+class BlockDetection
 {
 public:
-    TurtleFollow(ros::NodeHandle nh);
-    ~TurtleFollow();
+    BlockDetection(ros::NodeHandle nh);
+    ~BlockDetection();
+
+    void detection(void);
 
     ros::NodeHandle nh_;
 
 private:
+    void imageCallback(const sensor_msgs::ImageConstPtr &msg);
     void laserCallback(const sensor_msgs::LaserScanConstPtr &msg);
     void odomCallback(const nav_msgs::OdometryConstPtr &msg);
 
