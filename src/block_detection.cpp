@@ -39,6 +39,7 @@ void BlockDetection::odomCallback(const nav_msgs::OdometryConstPtr &msg)
 void BlockDetection::detection(void)
 {
     //Convert image
+    //BGR2HSV
 
     //Threshold to isolate Red
 
@@ -62,10 +63,9 @@ void BlockDetection::detection(void)
 
 void Pursuit::imageCallback(const sensor_msgs::ImageConstPtr &msg)
 {
-    //Python
-    detection_image = bridge.imgmsg_to_cv2(msg, "bgr8")
-                          rows,
-    columns, res = detection_image.shape
+    //New
+    image_ = cv_bridge::toCvShare(msg, "bgr8")->image;
+    ///
 
     //Vid sub
     try
@@ -78,12 +78,11 @@ void Pursuit::imageCallback(const sensor_msgs::ImageConstPtr &msg)
         ROS_ERROR("Could not convert from '%s' to 'bgr8'.", msg->encoding.c_str());
     }
 
-    //Vid pub
-    msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", frame).toImageMsg();
-    pub.publish(msg);
-    ///////////////////
+    ////////////////////////////////////////////////////////////////////////////////
 
     namespace enc = sensor_msgs::image_encodings;
+    
+    cv_bridge::CvImagePtr cvPtr_;
 
     try
     {
@@ -97,13 +96,5 @@ void Pursuit::imageCallback(const sensor_msgs::ImageConstPtr &msg)
         ROS_ERROR("cv_bridge exception: %s", e.what());
         return;
     }
-
-    imageDataBuffer_.mtx_.lock();
     imageDataBuffer_.imageDeq_.push_back(cvPtr_->image);
-
-    if (imageDataBuffer_.imageDeq_.size() > 2)
-    {
-        imageDataBuffer_.imageDeq_.pop_front();
-    }
-    imageDataBuffer_.mtx_.unlock();
 }
