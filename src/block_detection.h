@@ -38,6 +38,9 @@ private:
     void laserCallback(const sensor_msgs::LaserScanConstPtr &msg);
     void odomCallback(const nav_msgs::OdometryConstPtr &msg);
 
+    cv_bridge::CvImagePtr cvPtr_; //Delete if not used------------
+
+    cv::Mat image_;//delete if not used--------------
     ros::Subscriber odom_sub_;
     ros::Subscriber laser_sub_;
     ros::Publisher cmd_vel_pub_;
