@@ -63,6 +63,7 @@ void BlockDetection::detection(void)
 void Pursuit::imageCallback(const sensor_msgs::ImageConstPtr &msg)
 {
     //Python
+    bridge = CvBridge()
     detection_image = bridge.imgmsg_to_cv2(msg, "bgr8")
                           rows,
     columns, res = detection_image.shape
@@ -107,3 +108,40 @@ void Pursuit::imageCallback(const sensor_msgs::ImageConstPtr &msg)
     }
     imageDataBuffer_.mtx_.unlock();
 }
+
+
+
+//////single file code
+
+
+// #include <ros/ros.h>
+// #include <image_transport/image_transport.h>
+// #include <opencv2/highgui/highgui.hpp>
+// #include <cv_bridge/cv_bridge.h>
+
+// void imageCallback(const sensor_msgs::ImageConstPtr& msg)
+// {
+//   try
+//   {
+//     cv::imshow("video_subscriber", cv_bridge::toCvShare(msg, "bgr8")->image);
+//     cv::waitKey(30);
+//   }
+//   catch (cv_bridge::Exception& e)
+//   {
+//     ROS_ERROR("Could not convert from '%s' to 'bgr8'.", msg->encoding.c_str());
+//   }
+// }
+
+// int main(int argc, char **argv)
+// {
+//   ros::init(argc, argv, "video_subscriber");
+//   ros::NodeHandle nh;
+//   cv::namedWindow("video_subscriber");
+//   cv::startWindowThread();
+//   image_transport::ImageTransport it(nh);
+//   image_transport::Subscriber sub = it.subscribe("/video_publisher", 1, imageCallback);
+//   ros::spin();
+//   cv::destroyWindow("video_subscriber");
+// }
+
+/////////////////////////////////////
