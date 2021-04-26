@@ -6,7 +6,7 @@
   <arg name="yaw" default="-1.0"/>
 
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
-    <arg name="world_name" value="$(env HOME)/catkin_ws/src/ar_group_project_2/ar_group_project_2.world"/>
+    <arg name="world_name" value="$(env HOME)/catkin_ws/src/maze_navigating_robot/launch/ar_group_project_2.world"/>
     <arg name="paused" value="false"/>
     <arg name="use_sim_time" value="true"/>
     <arg name="gui" value="true"/>
