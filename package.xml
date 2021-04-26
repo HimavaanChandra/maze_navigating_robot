@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>turtle_follow</name>
+  <name>maze_navigating_robot</name>
   <version>1.0.0</version>
-  <description>turtle_follow</description>
+  <description>maze_navigating_robot</description>
 
 
   <maintainer email="himavaan.chandra@student.uts.edu.au">Himavaan Chandra</maintainer>
