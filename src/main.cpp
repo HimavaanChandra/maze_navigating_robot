@@ -119,6 +119,7 @@ namespace brick_search
   // Constructor
   BrickSearch::BrickSearch(ros::NodeHandle &nh) : it_{nh}
   {
+
     // Wait for "static_map" service to be available
     ROS_INFO("Waiting for \"static_map\" service...");
     ros::service::waitForService("static_map");
@@ -307,6 +308,9 @@ namespace brick_search
 
       // Delay so the loop doesn't run too fast
       ros::Duration(0.2).sleep();
+
+      // twist.angular.z = 0.;
+      // cmd_vel_pub_.publish(twist);
     }
   }
 
