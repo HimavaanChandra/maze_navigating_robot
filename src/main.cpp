@@ -201,7 +201,6 @@ namespace brick_search
 
     frobenius_norm = std::sqrt(frobenius_norm);
 
-
     if (frobenius_norm < 0.05)
     {
       localised_ = true;
@@ -311,11 +310,19 @@ namespace brick_search
       // Delay so the loop doesn't run too fast
       ros::Duration(0.2).sleep();
 
+      twist.linear.x = 1;
       // twist.angular.z = 0.;
-      // cmd_vel_pub_.publish(twist);
+      cmd_vel_pub_.publish(twist);
 
+      // Desired seach x,y position
+      // Covert into required units (x,y or meters)
 
-      
+      // path_planning_algorithm(desired position) - From package or custom?
+
+      // pure_pursuit_algorithm(planned path) - From package or custom? (package probably better?)
+
+      // If box found? - Inside pure_pursuit_algorithm? Or here is ok if pure_pursuit is seperate thread or ROS package
+      // Use open CV to move straight to the box or path planning to recalculate a path to the box position (calulcated using lidar or depth camera with current robot position)
     }
   }
 
