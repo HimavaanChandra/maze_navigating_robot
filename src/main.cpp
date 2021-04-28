@@ -190,6 +190,7 @@ namespace brick_search
 
   void BrickSearch::amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped &pose_msg)
   {
+
     // Check the covariance
     double frobenius_norm = 0.;
 
@@ -199,6 +200,7 @@ namespace brick_search
     }
 
     frobenius_norm = std::sqrt(frobenius_norm);
+
 
     if (frobenius_norm < 0.05)
     {
@@ -311,6 +313,9 @@ namespace brick_search
 
       // twist.angular.z = 0.;
       // cmd_vel_pub_.publish(twist);
+
+
+      
     }
   }
 
@@ -322,11 +327,7 @@ int main(int argc, char **argv)
 
   ros::NodeHandle nh{};
 
-  ROS_INFO_STREAM("Hello, World!");
-
   brick_search::BrickSearch bs(nh);
-
-  bs.mainLoop();
 
   // Asynchronous spinner doesn't block
   ros::AsyncSpinner spinner(1);
