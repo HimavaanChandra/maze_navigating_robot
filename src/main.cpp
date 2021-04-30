@@ -29,6 +29,8 @@
 #include <cmath>
 
 #include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgcodecs.hpp>  // can remove probs -----------------------------------------
 
 #include <ros/ros.h>
 #include <nav_msgs/GetMap.h>
@@ -332,9 +334,15 @@ void detection(void)
 {
 	//Convert image
 	//BGR2HSV
-	cv::Mat image_ = cv::imread("D:/Documents/UTS/Mechatronics/Advanced robotics/Assignment 3/maze_navigating_robot/imageTuning/image2.jpg");
-	cv::Mat hsv; //Make class variable?-------
+	// cv::Mat image_ = cv::imread("/home/ros/catkin_ws/src/maze_navigating_robot/src/image2.jpg");
+  cv::Mat image_ = cv::imread("/home/ros/catkin_ws/src/maze_navigating_robot/imageTuning/image2.jpg");
+	cv::imshow("image", image_);
+  cv::waitKey(0);
+
+  cv::Mat hsv; //Make class variable?--------------------------
 	cv::cvtColor(image_, hsv, cv::COLOR_BGR2HSV);
+  cv::imshow("hsv", hsv);
+  cv::waitKey(0);
 
 	//https://docs.opencv.org/3.4/da/d97/tutorial_threshold_inRange.html
 	//Threshold to isolate Red
@@ -343,36 +351,40 @@ void detection(void)
 	// cv::inRange(hsv, cv::Scalar(0, 127, 50), cv::Scalar(6, 255, 255), redMask);
 	//Real Robot
 	cv::inRange(hsv, cv::Scalar(0, 127, 50), cv::Scalar(6, 255, 255), redMask);
+  cv::imshow("redMask", redMask);
+  cv::waitKey(0);
+
 	//Draw box around red blob
 	cv::Mat edges;
 	cv::Canny(redMask, edges, 400, 1400, 3);
+  cv::imshow("edges", edges);
+  cv::waitKey(0);
+
 	//Find contours
 	std::vector<std::vector<cv::Point> > contours;
 	cv::findContours(edges, contours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
 	//Draw contours
 	cv::drawContours(image_, contours, 0, 255, -1);
+  cv::imshow("contours", image_);
+  cv::waitKey(0);
+
 	// cv::drawContours( image_, contours, (int)i, color, 2, LINE_8, hierarchy, 0 );
 	// cv::drawContours(output_image, hulls, 0, 255, -1);
 	//Get centre position of blob
 	//Get moments of contours
-	cv::Moments m = cv::moments(contours, true);
+  std::cout << "Premoments" << std::endl;
+	cv::Moments m = cv::moments(contours[0], true);
+  std::cout << "yeet" <<std::endl;
 	//centre of mass
 	int cx = m.m10 / m.m00;
 	int cy = m.m01 / m.m00;
-
-	cv::imshow("image", image_);
-	cv::waitKey();
-    //Publish image to topic for debugging and report
-
-//Method 1:
-    //Use lidar to work out where block is in frame
-    //Plot on map
-
-//Method 2:
-    //Override turtlebot control --Will need to blear waypoints or set a bool to override
-    //Turn towards red blob
-    //Drive towards blob untill it reaches a certain scale in frame
-    //Stop the robot
+  cv::Point pt(cx, cy);
+  cv::circle(image_, pt, 3, CV_RGB(0, 255, 0), 1);
+	
+  cv::imshow("Finalimage", image_);
+	cv::waitKey(0);
+  
+  //Publish image to topic for debugging and report--------------------
     
 }
 
@@ -380,6 +392,8 @@ void detection(void)
 
 int main(int argc, char **argv)
 {
+  detection(); //Remove---------------------------
+
   ros::init(argc, argv, "main");
 
   ros::NodeHandle nh{};
