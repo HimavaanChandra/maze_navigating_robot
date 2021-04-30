@@ -38,15 +38,38 @@ void BlockDetection::odomCallback(const nav_msgs::OdometryConstPtr &msg)
 
 void BlockDetection::detection(void)
 {
-    //Convert image
-    //BGR2HSV
+	//Convert image
+	//BGR2HSV
+	cv::Mat image_ = cv::imread("D:/Documents/UTS/Mechatronics/Advanced robotics/Assignment 3/maze_navigating_robot/imageTuning/image2.jpg");
+	cv::Mat hsv; //Make class variable?-------
+	cv::cvtColor(image_, hsv, cv::COLOR_BGR2HSV);
 
-    //Threshold to isolate Red
+	//https://docs.opencv.org/3.4/da/d97/tutorial_threshold_inRange.html
+	//Threshold to isolate Red
+	cv::Mat redMask;
+	//Sim
+	// cv::inRange(hsv, cv::Scalar(0, 127, 50), cv::Scalar(6, 255, 255), redMask);
+	//Real Robot
+	cv::inRange(hsv, cv::Scalar(0, 127, 50), cv::Scalar(6, 255, 255), redMask);
+	//Draw box around red blob
+	cv::Mat edges;
+	cv::Canny(redMask, edges, 400, 1400, 3);
+	//Find contours
+	std::vector<std::vector<cv::Point> > contours;
+	cv::findContours(edges, contours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+	//Draw contours
+	cv::drawContours(image_, contours, 0, 255, -1);
+	// cv::drawContours( image_, contours, (int)i, color, 2, LINE_8, hierarchy, 0 );
+	// cv::drawContours(output_image, hulls, 0, 255, -1);
+	//Get centre position of blob
+	//Get moments of contours
+	cv::Moments m = cv::moments(contours, true);
+	//centre of mass
+	int cx = m.m10 / m.m00;
+	int cy = m.m01 / m.m00;
 
-    //Draw box around red blob
-
-    //Get centre position of blob
-
+	cv::imshow("image", image_);
+	cv::waitKey();
     //Publish image to topic for debugging and report
 
 //Method 1:

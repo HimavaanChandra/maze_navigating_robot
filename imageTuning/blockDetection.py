@@ -15,7 +15,7 @@ hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 # lower_red = (0, 200, 15)
 # upper_red = (0, 255, 255)
 
-#real robot
+#Real Robot
 lower_red = (0, 127, 50) #was 30
 upper_red = (6, 255, 255)
 
