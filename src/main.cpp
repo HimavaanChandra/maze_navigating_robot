@@ -334,15 +334,10 @@ void detection(void)
 {
 	//Convert image
 	//BGR2HSV
-	// cv::Mat image_ = cv::imread("/home/ros/catkin_ws/src/maze_navigating_robot/src/image2.jpg");
-  cv::Mat image_ = cv::imread("/home/ros/catkin_ws/src/maze_navigating_robot/imageTuning/image2.jpg");
-	cv::imshow("image", image_);
-  cv::waitKey(0);
+  cv::Mat image_ = cv::imread("/home/ros/catkin_ws/src/maze_navigating_robot/imageTuning/image2.jpg"); //Remove and replace with topic/imagecallback
 
-  cv::Mat hsv; //Make class variable?--------------------------
+  cv::Mat hsv; //Make class variable?/Only use one vartaiable to save time for all hsv redMask edges etc--------------------------
 	cv::cvtColor(image_, hsv, cv::COLOR_BGR2HSV);
-  cv::imshow("hsv", hsv);
-  cv::waitKey(0);
 
 	//https://docs.opencv.org/3.4/da/d97/tutorial_threshold_inRange.html
 	//Threshold to isolate Red
@@ -351,38 +346,28 @@ void detection(void)
 	// cv::inRange(hsv, cv::Scalar(0, 127, 50), cv::Scalar(6, 255, 255), redMask);
 	//Real Robot
 	cv::inRange(hsv, cv::Scalar(0, 127, 50), cv::Scalar(6, 255, 255), redMask);
-  cv::imshow("redMask", redMask);
-  cv::waitKey(0);
 
 	//Draw box around red blob
 	cv::Mat edges;
 	cv::Canny(redMask, edges, 400, 1400, 3);
-  cv::imshow("edges", edges);
-  cv::waitKey(0);
 
-	//Find contours
+	//Find contours: https://docs.opencv.org/master/d4/d73/tutorial_py_contours_begin.html
 	std::vector<std::vector<cv::Point> > contours;
 	cv::findContours(edges, contours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
 	//Draw contours
-	cv::drawContours(image_, contours, 0, 255, -1);
-  cv::imshow("contours", image_);
-  cv::waitKey(0);
+	cv::drawContours(image_, contours,  0, cv::Scalar(0, 255, 0), 2);
 
-	// cv::drawContours( image_, contours, (int)i, color, 2, LINE_8, hierarchy, 0 );
-	// cv::drawContours(output_image, hulls, 0, 255, -1);
 	//Get centre position of blob
 	//Get moments of contours
-  std::cout << "Premoments" << std::endl;
 	cv::Moments m = cv::moments(contours[0], true);
-  std::cout << "yeet" <<std::endl;
-	//centre of mass
+	//centre of blob: https://www.pyimagesearch.com/2016/02/01/opencv-center-of-contour/
 	int cx = m.m10 / m.m00;
 	int cy = m.m01 / m.m00;
   cv::Point pt(cx, cy);
   cv::circle(image_, pt, 3, CV_RGB(0, 255, 0), 1);
 	
-  cv::imshow("Finalimage", image_);
-	cv::waitKey(0);
+  cv::imshow("Finalimage", image_); //Delete -----------------------------------------
+	cv::waitKey(0); //Delete------------------------------------------------------------
   
   //Publish image to topic for debugging and report--------------------
     
