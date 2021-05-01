@@ -30,7 +30,7 @@
 
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
-#include <opencv2/imgcodecs.hpp>  // can remove probs -----------------------------------------
+#include <opencv2/imgcodecs.hpp> // can remove probs -----------------------------------------
 
 #include <ros/ros.h>
 #include <nav_msgs/GetMap.h>
@@ -105,6 +105,9 @@ namespace brick_search
     // Velocity command publisher
     ros::Publisher cmd_vel_pub_{};
 
+    // Velocity command publisher
+    ros::Publisher move_base_simple_goal_{};
+
     // Image transport and subscriber
     image_transport::ImageTransport it_;
     image_transport::Subscriber image_sub_{};
@@ -159,6 +162,9 @@ namespace brick_search
 
     // Advertise "cmd_vel" publisher to control TurtleBot manually
     cmd_vel_pub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel", 1, false);
+
+    // Advertise "move_base_simple_goal" publisher for robot path planning goal
+    move_base_simple_goal_ = nh.advertise<geometry_msgs::PoseStamped>("/move_base_simple/goal", 1, false);
 
     // Action client for "move_base"
     ROS_INFO("Waiting for \"move_base\" action...");
@@ -312,9 +318,38 @@ namespace brick_search
       // Delay so the loop doesn't run too fast
       ros::Duration(0.2).sleep();
 
-      twist.linear.x = 1;
-      // twist.angular.z = 0.;
-      cmd_vel_pub_.publish(twist);
+      // twist.linear.x = 1;
+      // // twist.angular.z = 0.;
+      // cmd_vel_pub_.publish(twist);
+
+      // Move to coordinate position
+      pose_2d.x = 0.5;
+      pose_2d.y = 0.5;
+
+      geometry_msgs::PoseStamped goal;
+      
+      goal.pose.position.x = 1.5;
+      goal.pose.position.y = 3;
+
+      goal.pose.orientation.w = 0;
+      goal.pose.orientation.x = 0;
+      goal.pose.orientation.y = 0;
+      goal.pose.orientation.z = 0.6;
+
+      goal.header.frame_id = "map";
+
+      move_base_simple_goal_.publish(goal);
+
+      //     ROS_INFO_STREAM("Target pose: " << pose_2d);
+
+      // // Send a goal to "move_base" with "move_base_action_client_"
+      // move_base_msgs::MoveBaseActionGoal action_goal{};
+
+      // action_goal.goal.target_pose.header.frame_id = "map";
+      // action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
+
+      ROS_INFO("Sending goal...");
+      // move_base_action_client_.sendGoal(action_goal.goal);
 
       // Desired seach x,y position
       // Covert into required units (x,y or meters)
@@ -332,49 +367,49 @@ namespace brick_search
 
 void detection(void)
 {
-	//Convert image
-	//BGR2HSV
+  //Convert image
+  //BGR2HSV
   cv::Mat image_ = cv::imread("/home/ros/catkin_ws/src/maze_navigating_robot/imageTuning/image2.jpg"); //Remove and replace with topic/imagecallback
   // cv::Mat image_ = &image; How do I access &image?-----------------------------------------------------------------------------
   cv::Mat hsv; //Make class variable?/Only use one vartaiable to save time for all hsv redMask edges etc--------------------------
-	cv::cvtColor(image_, hsv, cv::COLOR_BGR2HSV);
+  cv::cvtColor(image_, hsv, cv::COLOR_BGR2HSV);
 
-	//https://docs.opencv.org/3.4/da/d97/tutorial_threshold_inRange.html
-	//Threshold to isolate Red
-	cv::Mat redMask;
-	//Sim
-	// cv::inRange(hsv, cv::Scalar(0, 127, 50), cv::Scalar(6, 255, 255), redMask);
-	//Real Robot
-	cv::inRange(hsv, cv::Scalar(0, 127, 50), cv::Scalar(6, 255, 255), redMask);
+  //https://docs.opencv.org/3.4/da/d97/tutorial_threshold_inRange.html
+  //Threshold to isolate Red
+  cv::Mat redMask;
+  //Sim
+  // cv::inRange(hsv, cv::Scalar(0, 127, 50), cv::Scalar(6, 255, 255), redMask);
+  //Real Robot
+  cv::inRange(hsv, cv::Scalar(0, 127, 50), cv::Scalar(6, 255, 255), redMask);
 
-	//Draw box around red blob
-	cv::Mat edges;
-	cv::Canny(redMask, edges, 400, 1400, 3);
+  //Draw box around red blob
+  cv::Mat edges;
+  cv::Canny(redMask, edges, 400, 1400, 3);
 
-	//Find contours: https://docs.opencv.org/master/d4/d73/tutorial_py_contours_begin.html
-	std::vector<std::vector<cv::Point> > contours;
-	cv::findContours(edges, contours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
-	//Draw contours
-	cv::drawContours(image_, contours,  0, cv::Scalar(0, 255, 0), 2);
+  //Find contours: https://docs.opencv.org/master/d4/d73/tutorial_py_contours_begin.html
+  std::vector<std::vector<cv::Point>> contours;
+  cv::findContours(edges, contours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+  //Draw contours
+  cv::drawContours(image_, contours, 0, cv::Scalar(0, 255, 0), 2);
 
-	//Get centre position of blob
-	//Get moments of contours
-	cv::Moments m = cv::moments(contours[0], true);
-	//centre of blob: https://www.pyimagesearch.com/2016/02/01/opencv-center-of-contour/
-	int cx = m.m10 / m.m00;
-	int cy = m.m01 / m.m00;
+  //Get centre position of blob
+  //Get moments of contours
+  cv::Moments m = cv::moments(contours[0], true);
+  //centre of blob: https://www.pyimagesearch.com/2016/02/01/opencv-center-of-contour/
+  int cx = m.m10 / m.m00;
+  int cy = m.m01 / m.m00;
   cv::Point pt(cx, cy);
   cv::circle(image_, pt, 3, CV_RGB(0, 255, 0), 1);
 
-	double area = cv::contourArea(contours[0]);
+  double area = cv::contourArea(contours[0]);
 
   cv::Size size = image_.size();
-  double frameArea = size.width*size.height;
-  std::cout << "Contour Area: " << area << std::endl; //--------------------------------------------------------
+  double frameArea = size.width * size.height;
+  std::cout << "Contour Area: " << area << std::endl;    //--------------------------------------------------------
   std::cout << "Frame Area: " << frameArea << std::endl; //-----------------------------------------------------
   //Do ratio comparison then initiate takeover?
-  double ratio  = area/frameArea;
-  int cutoff=0;//Adjust------------------------------
+  double ratio = area / frameArea;
+  int cutoff = 0; //Adjust------------------------------
   if (ratio > cutoff)
   {
     //Take over control till ratio is certain amount. - This might need to be in higher loop so that values can be recalculated or not
@@ -384,18 +419,13 @@ void detection(void)
     twist.angular.z = 0.;
     twist.linear.x = 0;
     // cmd_vel_pub_.publish(twist); //Needs to be redefined?------------------------------
-
   }
 
-
   cv::imshow("Finalimage", image_); //Delete -----------------------------------------
-	cv::waitKey(0); //Delete------------------------------------------------------------
-  
+  cv::waitKey(0);                   //Delete------------------------------------------------------------
+
   //Publish image to topic for debugging and report--------------------
-    
 }
-
-
 
 int main(int argc, char **argv)
 {
