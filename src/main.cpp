@@ -94,6 +94,7 @@ namespace brick_search
     std::atomic<bool> localised_{false};
     std::atomic<bool> brick_found_{false};
     int image_msg_count_ = 0;
+    int goal_reached_status = 3; // 0 = goal not reached 3 = goal reached 4 = Failed to find a valid plan. Even after executing recovery behaviors.
 
     // Transform listener
     tf2_ros::Buffer transform_buffer_{};
@@ -101,6 +102,7 @@ namespace brick_search
 
     // Subscribe to the AMCL pose to get covariance
     ros::Subscriber amcl_pose_sub_{};
+    ros::Subscriber move_base_status_sub_{};
 
     // Velocity command publisher
     ros::Publisher cmd_vel_pub_{};
@@ -119,7 +121,21 @@ namespace brick_search
     geometry_msgs::Pose2D getPose2d();
     void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped &pose_msg);
     void imageCallback(const sensor_msgs::ImageConstPtr &image_msg_ptr);
+    void moveBaseStatusCallback(const actionlib_msgs::GoalStatusArray &moveBaseStatus_msg_ptr);
+
+    int getGoalReachedStatus(void);
+    void setGoalReachedStatus(int status);
   };
+
+  int BrickSearch::getGoalReachedStatus(void)
+  {
+    return goal_reached_status;
+  }
+
+  void BrickSearch::setGoalReachedStatus(int status)
+  {
+    goal_reached_status = status;
+  }
 
   // Constructor
   BrickSearch::BrickSearch(ros::NodeHandle &nh) : it_{nh}
@@ -159,6 +175,9 @@ namespace brick_search
 
     // Subscribe to the camera
     image_sub_ = it_.subscribe("/camera/rgb/image_raw", 1, &BrickSearch::imageCallback, this);
+
+    // Subscribe to the camera
+    move_base_status_sub_ = nh.subscribe("/move_base/status", 1, &BrickSearch::moveBaseStatusCallback, this);
 
     // Advertise "cmd_vel" publisher to control TurtleBot manually
     cmd_vel_pub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel", 1, false);
@@ -249,12 +268,21 @@ namespace brick_search
     ROS_INFO_STREAM("brick_found_: " << brick_found_);
   }
 
+  void BrickSearch::moveBaseStatusCallback(const actionlib_msgs::GoalStatusArray &moveBaseStatus_msg_ptr)
+  {
+    if (goal_reached_status == 1)
+    {
+      setGoalReachedStatus(moveBaseStatus_msg_ptr.status_list.back().status);
+    }
+  }
+
   void BrickSearch::mainLoop()
   {
     // Wait for the TurtleBot to localise
     ROS_INFO("Localising...");
     while (ros::ok())
     {
+
       // Turn slowly
       geometry_msgs::Twist twist{};
       twist.angular.z = 1.;
@@ -303,6 +331,8 @@ namespace brick_search
     {
       ROS_INFO("mainLoop");
 
+      // action_goal = {};
+
       // Get the state of the goal
       actionlib::SimpleClientGoalState state = move_base_action_client_.getState();
 
@@ -322,33 +352,32 @@ namespace brick_search
       // // twist.angular.z = 0.;
       // cmd_vel_pub_.publish(twist);
 
-      // Move to coordinate position
-      pose_2d.x = 0.5;
-      pose_2d.y = 0.5;
+      if (getGoalReachedStatus() != 3 && localised_) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
+      {
 
-      geometry_msgs::PoseStamped goal;
-      
-      goal.pose.position.x = 1.5;
-      goal.pose.position.y = 3;
+        // // Move to coordinate position
+        // pose_2d.x = 0.5;
+        // pose_2d.y = 0.5;
 
-      goal.pose.orientation.w = 0;
-      goal.pose.orientation.x = 0;
-      goal.pose.orientation.y = 0;
-      goal.pose.orientation.z = 0.6;
+        geometry_msgs::PoseStamped goal;
 
-      goal.header.frame_id = "map";
+        goal = {};
 
-      move_base_simple_goal_.publish(goal);
+        goal.pose.position.x = 1.5;
+        goal.pose.position.y = 3;
 
-      //     ROS_INFO_STREAM("Target pose: " << pose_2d);
+        goal.pose.orientation.w = 0;
+        goal.pose.orientation.x = 0;
+        goal.pose.orientation.y = 0;
+        goal.pose.orientation.z = 0.6;
 
-      // // Send a goal to "move_base" with "move_base_action_client_"
-      // move_base_msgs::MoveBaseActionGoal action_goal{};
+        goal.header.frame_id = "map";
 
-      // action_goal.goal.target_pose.header.frame_id = "map";
-      // action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
+        move_base_simple_goal_.publish(goal);
 
-      ROS_INFO("Sending goal...");
+        ROS_INFO("Sending goal...");
+      }
+
       // move_base_action_client_.sendGoal(action_goal.goal);
 
       // Desired seach x,y position
