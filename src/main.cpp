@@ -94,7 +94,7 @@ namespace brick_search
     std::atomic<bool> localised_{false};
     std::atomic<bool> brick_found_{false};
     int image_msg_count_ = 0;
-    int goal_reached_status = 3; // 0 = goal not reached 3 = goal reached 4 = Failed to find a valid plan. Even after executing recovery behaviors.
+    int goal_reached_status = 0; // 0 = goal not reached 3 = goal reached 4 = Failed to find a valid plan. Even after executing recovery behaviors.
 
     // Transform listener
     tf2_ros::Buffer transform_buffer_{};
@@ -232,8 +232,12 @@ namespace brick_search
     {
       localised_ = true;
 
-      // Unsubscribe from "amcl_pose" because we should only need to localise once at start up
-      amcl_pose_sub_.shutdown();
+      // // Unsubscribe from "amcl_pose" because we should only need to localise once at start up
+      // amcl_pose_sub_.shutdown();
+    }
+    else
+    {
+      localised_ = false;
     }
   }
 
@@ -326,12 +330,12 @@ namespace brick_search
     ROS_INFO("Sending goal...");
     move_base_action_client_.sendGoal(action_goal.goal);
 
+    geometry_msgs::PoseStamped goal;
+
     // This loop repeats until ROS shuts down, you probably want to put all your code in here
     while (ros::ok())
     {
       ROS_INFO("mainLoop");
-
-      // action_goal = {};
 
       // Get the state of the goal
       actionlib::SimpleClientGoalState state = move_base_action_client_.getState();
@@ -348,18 +352,25 @@ namespace brick_search
       // Delay so the loop doesn't run too fast
       ros::Duration(0.2).sleep();
 
-      // twist.linear.x = 1;
-      // // twist.angular.z = 0.;
-      // cmd_vel_pub_.publish(twist);
+      ROS_INFO_STREAM(getGoalReachedStatus());
 
-      if (getGoalReachedStatus() != 3 && localised_) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
+      ROS_INFO_STREAM(localised_);
+
+      if (localised_ == false)
+      {
+
+        // NEED A WAY TO CLEAR THE CURRENT GOAL THAT HAS ALREAYD BEEN PUBLISHED???
+
+        twist.angular.z = 1.;
+        cmd_vel_pub_.publish(twist);
+
+      }
+      else if (getGoalReachedStatus() != 3) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
       {
 
         // // Move to coordinate position
         // pose_2d.x = 0.5;
         // pose_2d.y = 0.5;
-
-        geometry_msgs::PoseStamped goal;
 
         goal = {};
 
@@ -376,6 +387,13 @@ namespace brick_search
         move_base_simple_goal_.publish(goal);
 
         ROS_INFO("Sending goal...");
+      }
+      else if (getGoalReachedStatus() == 4) // Failed to find a valid plan. Even after executing recovery behaviors.
+      {
+        // Set and move to a new different goal position
+            }
+      else
+      {
       }
 
       // move_base_action_client_.sendGoal(action_goal.goal);
