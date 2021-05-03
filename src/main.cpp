@@ -94,7 +94,8 @@ namespace brick_search
     std::atomic<bool> localised_{false};
     std::atomic<bool> brick_found_{false};
     int image_msg_count_ = 0;
-    int goal_reached_status = 0; // 0 = goal not reached 3 = goal reached 4 = Failed to find a valid plan. Even after executing recovery behaviors.
+    int goal_reached_status = 3; // 0 = goal not reached 3 = goal reached 4 = Failed to find a valid plan. Even after executing recovery behaviors.
+    bool lock = false;
 
     // Transform listener
     tf2_ros::Buffer transform_buffer_{};
@@ -176,7 +177,7 @@ namespace brick_search
     // Subscribe to the camera
     image_sub_ = it_.subscribe("/camera/rgb/image_raw", 1, &BrickSearch::imageCallback, this);
 
-    // Subscribe to the camera
+    // Subscribe to the goal status
     move_base_status_sub_ = nh.subscribe("/move_base/status", 1, &BrickSearch::moveBaseStatusCallback, this);
 
     // Advertise "cmd_vel" publisher to control TurtleBot manually
@@ -232,13 +233,13 @@ namespace brick_search
     {
       localised_ = true;
 
-      // // Unsubscribe from "amcl_pose" because we should only need to localise once at start up
-      // amcl_pose_sub_.shutdown();
+      // Unsubscribe from "amcl_pose" because we should only need to localise once at start up
+      amcl_pose_sub_.shutdown();
     }
-    else
-    {
-      localised_ = false;
-    }
+    // else
+    // {
+    //   localised_ = false;
+    // }
   }
 
   void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr &image_msg_ptr)
@@ -274,9 +275,12 @@ namespace brick_search
 
   void BrickSearch::moveBaseStatusCallback(const actionlib_msgs::GoalStatusArray &moveBaseStatus_msg_ptr)
   {
-    if (goal_reached_status == 1)
+
+    if (moveBaseStatus_msg_ptr.status_list.size() > 0)
     {
       setGoalReachedStatus(moveBaseStatus_msg_ptr.status_list.back().status);
+      std::cout << "front: " << moveBaseStatus_msg_ptr.status_list.front().status << std::endl;
+      std::cout << "back: " << moveBaseStatus_msg_ptr.status_list.back().status << std::endl;
     }
   }
 
@@ -313,25 +317,26 @@ namespace brick_search
     // Here's an example of getting the current pose and sending a goal to "move_base":
     geometry_msgs::Pose2D pose_2d = getPose2d();
 
-    ROS_INFO_STREAM("Current pose: " << pose_2d);
+    // ROS_INFO_STREAM("Current pose: " << pose_2d);
 
-    // Move forward 0.5 m
-    pose_2d.x += 0.5 * std::cos(pose_2d.theta);
-    pose_2d.y += 0.5 * std::sin(pose_2d.theta);
+    // // Move forward 0.5 m
+    // pose_2d.x += 0.5 * std::cos(pose_2d.theta);
+    // pose_2d.y += 0.5 * std::sin(pose_2d.theta);
 
-    ROS_INFO_STREAM("Target pose: " << pose_2d);
+    // ROS_INFO_STREAM("Target pose: " << pose_2d);
 
-    // Send a goal to "move_base" with "move_base_action_client_"
-    move_base_msgs::MoveBaseActionGoal action_goal{};
+    // // Send a goal to "move_base" with "move_base_action_client_"
+    // move_base_msgs::MoveBaseActionGoal action_goal{};
 
-    action_goal.goal.target_pose.header.frame_id = "map";
-    action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
+    // action_goal.goal.target_pose.header.frame_id = "map";
+    // action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
 
-    ROS_INFO("Sending goal...");
-    move_base_action_client_.sendGoal(action_goal.goal);
+    // ROS_INFO("Sending goal...");
+    // move_base_action_client_.sendGoal(action_goal.goal);
 
     geometry_msgs::PoseStamped goal;
-
+    
+    int i = 0;
     // This loop repeats until ROS shuts down, you probably want to put all your code in here
     while (ros::ok())
     {
@@ -340,14 +345,14 @@ namespace brick_search
       // Get the state of the goal
       actionlib::SimpleClientGoalState state = move_base_action_client_.getState();
 
-      if (state == actionlib::SimpleClientGoalState::SUCCEEDED)
-      {
-        // Print the state of the goal
-        ROS_INFO_STREAM(state.getText());
+      // if (state == actionlib::SimpleClientGoalState::SUCCEEDED)
+      // {
+      //   // Print the state of the goal
+      //   ROS_INFO_STREAM(state.getText());
 
-        // Shutdown when done
-        ros::shutdown();
-      }
+      //   // Shutdown when done
+      //   ros::shutdown();
+      // }
 
       // Delay so the loop doesn't run too fast
       ros::Duration(0.2).sleep();
@@ -356,42 +361,64 @@ namespace brick_search
 
       ROS_INFO_STREAM(localised_);
 
-      if (localised_ == false)
+      // if (localised_ == false)
+      // {
+
+      //   // NEED A WAY TO CLEAR THE CURRENT GOAL THAT HAS ALREAYD BEEN PUBLISHED???
+
+      //   twist.angular.z = 1.;
+      //   cmd_vel_pub_.publish(twist);
+      // }
+      // else
+      if (getGoalReachedStatus() == 3 || lock == false) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
       {
-
-        // NEED A WAY TO CLEAR THE CURRENT GOAL THAT HAS ALREAYD BEEN PUBLISHED???
-
-        twist.angular.z = 1.;
-        cmd_vel_pub_.publish(twist);
-
-      }
-      else if (getGoalReachedStatus() != 3) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
-      {
-
+        lock = true;
         // // Move to coordinate position
         // pose_2d.x = 0.5;
         // pose_2d.y = 0.5;
 
         goal = {};
 
-        goal.pose.position.x = 1.5;
+        i++;
+        goal.pose.position.x = 0.5 + i;
         goal.pose.position.y = 3;
 
-        goal.pose.orientation.w = 0;
+        goal.pose.orientation.w = getPose2d().theta;
         goal.pose.orientation.x = 0;
         goal.pose.orientation.y = 0;
-        goal.pose.orientation.z = 0.6;
+        goal.pose.orientation.z = 0;
 
         goal.header.frame_id = "map";
 
         move_base_simple_goal_.publish(goal);
 
         ROS_INFO("Sending goal...");
+
+        // Here's an example of getting the current pose and sending a goal to "move_base":
+
+        // ROS_INFO_STREAM("Current pose: " << pose_2d);
+
+        // pose_2d = getPose2d();
+
+        // // Move forward 0.5 m
+        // pose_2d.y = 3;
+        // pose_2d.x = 3;
+
+        // ROS_INFO_STREAM("Target pose: " << pose_2d);
+
+        // // Send a goal to "move_base" with "move_base_action_client_"
+        // move_base_msgs::MoveBaseActionGoal action_goal{};
+
+        // action_goal.goal.target_pose.header.frame_id = "map";
+        // action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
+
+        // ROS_INFO("Sending goal...");
+        // move_base_action_client_.sendGoal(action_goal.goal);
       }
       else if (getGoalReachedStatus() == 4) // Failed to find a valid plan. Even after executing recovery behaviors.
       {
         // Set and move to a new different goal position
-            }
+      }
       else
       {
       }
