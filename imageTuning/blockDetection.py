@@ -6,7 +6,7 @@ import cv2
 # Load an color image in grayscale
 # frame = cv2.imread('image.jpg',0)
 #Load standard
-frame = cv2.imread('image2.jpg')
+frame = cv2.imread('sim2.png')
 cv2.imshow('original', frame)
 
 hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
