@@ -42,6 +42,9 @@ BrickSearch::BrickSearch(ros::NodeHandle &nh) : it_{nh}
     // Subscribe to the goal status
     move_base_status_sub_ = nh.subscribe("/move_base/status", 1, &BrickSearch::moveBaseStatusCallback, this);
 
+    // Publish the processed camera image
+    detection_pub_ = it_.advertise("/detection_image", 1);
+
     // Advertise "cmd_vel" publisher to control TurtleBot manually
     cmd_vel_pub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel", 1, false);
 
@@ -85,37 +88,6 @@ void BrickSearch::amclPoseCallback(const geometry_msgs::PoseWithCovarianceStampe
     // }
 }
 
-void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr &image_msg_ptr)
-{
-    // Use this method to identify when the brick is visible
-
-    // The camera publishes at 30 fps, it's probably a good idea to analyse images at a lower rate than that
-    if (image_msg_count_ < 15)
-    {
-        image_msg_count_++;
-        return;
-    }
-    else
-    {
-        image_msg_count_ = 0;
-    }
-
-    // Copy the image message to a cv_bridge image pointer
-    cv_bridge::CvImagePtr image_ptr = cv_bridge::toCvCopy(image_msg_ptr);
-
-    // This is the OpenCV image
-    cv::Mat &image = image_ptr->image;
-
-    // You can set "brick_found_" to true to signal to "mainLoop" that you have found a brick
-    // You may want to communicate more information
-    // Since the "imageCallback" and "mainLoop" methods can run at the same time you should protect any shared variables
-    // with a mutex
-    // "brick_found_" doesn't need a mutex because it's an atomic
-
-    ROS_INFO("imageCallback");
-    ROS_INFO_STREAM("brick_found_: " << brick_found_);
-}
-
 void BrickSearch::moveBaseStatusCallback(const actionlib_msgs::GoalStatusArray &moveBaseStatus_msg_ptr)
 {
 
@@ -127,6 +99,129 @@ void BrickSearch::moveBaseStatusCallback(const actionlib_msgs::GoalStatusArray &
     }
 }
 
+void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr &image_msg_ptr)
+{
+    // Use this method to identify when the brick is visible
+
+    // The camera publishes at 30 fps, it's probably a good idea to analyse images at a lower rate than that
+    // if (image_msg_count_ < 15)
+    // {
+    //     image_msg_count_++;
+    //     return;
+    // }
+    // else
+    // {
+    //     image_msg_count_ = 0;
+    // }
+
+    // Copy the image message to a cv_bridge image pointer
+    // cv_bridge::CvImagePtr image_ptr = cv_bridge::toCvCopy(image_msg_ptr); // Delete probs -------
+
+    // This is the OpenCV image
+    // cv::Mat &image = image_ptr->image; //Original ---------------------------------------
+    // detection(image);
+    // cv::waitKey(5);//Delete-------------
+    //My code///////////////////////////////////////////////////////////////////
+    try
+    {
+        // cv::imshow("view", cv_bridge::toCvShare(msg, "bgr8")->image);
+        image_ = cv_bridge::toCvShare(image_msg_ptr, "bgr8")->image;
+        // cv::imshow("view", image);
+        // detection();
+        // cv::waitKey(30); //Can I remove this?-----------------------------------
+    }
+    catch (cv_bridge::Exception &e)
+    {
+        ROS_ERROR("Could not convert from '%s' to 'bgr8'.", image_msg_ptr->encoding.c_str());
+    }
+    ////////////////////////////////////////////////////////////////////////////
+
+
+    // You can set "brick_found_" to true to signal to "mainLoop" that you have found a brick
+    // You may want to communicate more information
+    // Since the "imageCallback" and "mainLoop" methods can run at the same time you should protect any shared variables
+    // with a mutex
+    // "brick_found_" doesn't need a mutex because it's an atomic
+
+    ROS_INFO("imageCallback");
+    ROS_INFO_STREAM("brick_found_: " << brick_found_);
+}
+
+    
+
+void BrickSearch::detection(void)
+{
+    publishImage_ = image_;
+    // cv::Mat &publishImage = image;
+    //Convert image
+    //BGR2HSV
+    // cv::Mat image_ = cv::imread("/home/ros/catkin_ws/src/maze_navigating_robot/imageTuning/image2.jpg"); //Remove and replace with topic/imagecallback
+    // cv::Mat image_ = &image; How do I access &image?-----------------------------------------------------------------------------
+    cv::Mat hsv; //Make class variable?/Only use one vartaiable to save time for all hsv redMask edges etc--------------------------
+    cv::cvtColor(publishImage_, hsv, cv::COLOR_BGR2HSV);
+
+    //https://docs.opencv.org/3.4/da/d97/tutorial_threshold_inRange.html
+    //Threshold to isolate Red
+    cv::Mat redMask;
+    //Sim
+    // cv::inRange(hsv, cv::Scalar(0, 127, 50), cv::Scalar(6, 255, 255), redMask);
+    //Real Robot
+    cv::inRange(hsv, cv::Scalar(0, 127, 50), cv::Scalar(6, 255, 255), redMask);
+
+    //Draw box around red blob
+    cv::Mat edges;
+    cv::Canny(redMask, edges, 400, 1400, 3);
+
+    //Find contours: https://docs.opencv.org/master/d4/d73/tutorial_py_contours_begin.html
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(edges, contours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+    //Draw contours
+    cv::drawContours(publishImage_, contours, 0, cv::Scalar(0, 255, 0), 2);
+
+    //Get centre position of blob
+    
+    if (contours.size() > 0)
+    {
+        //Get moments of contours
+        cv::Moments m = cv::moments(contours[0], true);
+        //centre of blob: https://www.pyimagesearch.com/2016/02/01/opencv-center-of-contour/
+        int cx = m.m10 / m.m00;
+        int cy = m.m01 / m.m00;
+        cv::Point pt(cx, cy);
+        cv::circle(publishImage_, pt, 3, CV_RGB(0, 255, 0), 1);
+
+        double area = cv::contourArea(contours[0]);
+
+        cv::Size size = publishImage_.size();
+        double frameArea = size.width * size.height;
+        std::cout << "Contour Area: " << area << std::endl;    //--------Delete------------------------------------------------
+        std::cout << "Frame Area: " << frameArea << std::endl; //--------Delete---------------------------------------------
+        //Do ratio comparison then initiate takeover?
+        double ratio = area / frameArea;
+        int cutoff = 0; //Adjust------------------------------
+        brick_found_ = true;
+    }
+    else
+    {
+        brick_found_ = false;
+    }
+    // if (ratio > cutoff)
+    // {
+    //   //Take over control till ratio is certain amount. - This might need to be in higher loop so that values can be recalculated or not
+
+    //   //Set linear and angular velocity override
+    //   geometry_msgs::Twist twist{};
+    //   twist.angular.z = 0.;
+    //   twist.linear.x = 0;
+    //   // cmd_vel_pub_.publish(twist); //Needs to be redefined?------------------------------
+    // }
+
+    ROS_INFO("Converted image"); //-Delete or keep?-------------------------------------
+    
+    //Publish image
+    test_ = cv_bridge::CvImage(std_msgs::Header(), "bgr8", publishImage_).toImageMsg();
+    detection_pub_.publish(test_);
+}
 
 void BrickSearch::pathPlanning(double x, double y)
 {
@@ -175,8 +270,6 @@ geometry_msgs::Pose2D BrickSearch::getPose2d()
     return pose;
 }
 
-
-
 double BrickSearch::wrapAngle(double angle)
 {
     // Function to wrap an angle between 0 and 2*Pi
@@ -206,72 +299,6 @@ geometry_msgs::Pose BrickSearch::pose2dToPose(const geometry_msgs::Pose2D &pose_
     return pose;
 }
 
-void BrickSearch::detection(void)
-{
-    //Convert image
-    //BGR2HSV
-    // cv::Mat image_ = cv::imread("/home/ros/catkin_ws/src/maze_navigating_robot/imageTuning/image2.jpg"); //Remove and replace with topic/imagecallback
-    // cv::Mat image_ = &image; How do I access &image?-----------------------------------------------------------------------------
-    cv::Mat hsv; //Make class variable?/Only use one vartaiable to save time for all hsv redMask edges etc--------------------------
-    cv::cvtColor(image_, hsv, cv::COLOR_BGR2HSV);
-
-    //https://docs.opencv.org/3.4/da/d97/tutorial_threshold_inRange.html
-    //Threshold to isolate Red
-    cv::Mat redMask;
-    //Sim
-    // cv::inRange(hsv, cv::Scalar(0, 127, 50), cv::Scalar(6, 255, 255), redMask);
-    //Real Robot
-    cv::inRange(hsv, cv::Scalar(0, 127, 50), cv::Scalar(6, 255, 255), redMask);
-
-    //Draw box around red blob
-    cv::Mat edges;
-    cv::Canny(redMask, edges, 400, 1400, 3);
-
-    //Find contours: https://docs.opencv.org/master/d4/d73/tutorial_py_contours_begin.html
-    std::vector<std::vector<cv::Point>> contours;
-    cv::findContours(edges, contours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
-    //Draw contours
-    cv::drawContours(image_, contours, 0, cv::Scalar(0, 255, 0), 2);
-
-    //Get centre position of blob
-    //Get moments of contours
-    if (contours.size() > 0)
-    {
-        cv::Moments m = cv::moments(contours[0], true);
-        //centre of blob: https://www.pyimagesearch.com/2016/02/01/opencv-center-of-contour/
-        int cx = m.m10 / m.m00;
-        int cy = m.m01 / m.m00;
-        cv::Point pt(cx, cy);
-        cv::circle(image_, pt, 3, CV_RGB(0, 255, 0), 1);
-
-        double area = cv::contourArea(contours[0]);
-
-        cv::Size size = image_.size();
-        double frameArea = size.width * size.height;
-        std::cout << "Contour Area: " << area << std::endl;    //--------------------------------------------------------
-        std::cout << "Frame Area: " << frameArea << std::endl; //-----------------------------------------------------
-        //Do ratio comparison then initiate takeover?
-        double ratio = area / frameArea;
-        int cutoff = 0; //Adjust------------------------------
-    }
-    // if (ratio > cutoff)
-    // {
-    //   //Take over control till ratio is certain amount. - This might need to be in higher loop so that values can be recalculated or not
-
-    //   //Set linear and angular velocity override
-    //   geometry_msgs::Twist twist{};
-    //   twist.angular.z = 0.;
-    //   twist.linear.x = 0;
-    //   // cmd_vel_pub_.publish(twist); //Needs to be redefined?------------------------------
-    // }
-
-    ROS_INFO("Converted image");
-    cv::imshow("view", image_); //Delete -----------------------------------------
-                                // cv::waitKey(0);                   //Delete------------------------------------------------------------
-
-    //Publish image to topic for debugging and report--------------------
-}
-
 int BrickSearch::getGoalReachedStatus(void)
 {
     return goal_reached_status;
@@ -282,8 +309,7 @@ void BrickSearch::setGoalReachedStatus(int status)
     goal_reached_status = status;
 }
 
-
-void BrickSearch::mainLoop()
+void BrickSearch::mainLoop(void)
 {
     // Wait for the TurtleBot to localise
     ROS_INFO("Localising...");
@@ -341,8 +367,10 @@ void BrickSearch::mainLoop()
 
         // Delay so the loop doesn't run too fast
         ros::Duration(0.2).sleep();
+        
+        detection(); //Delete or keep?-------------------------------------
 
-        BrickSearch::pathPlanning(1.5, 3);
+        // BrickSearch::pathPlanning(1.5, 3);
 
         // move_base_action_client_.sendGoal(action_goal.goal);
 
@@ -357,6 +385,3 @@ void BrickSearch::mainLoop()
         // Use open CV to move straight to the box or path planning to recalculate a path to the box position (calulcated using lidar or depth camera with current robot position)
     }
 }
-
-
-

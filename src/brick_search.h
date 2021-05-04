@@ -25,7 +25,8 @@ public:
     explicit BrickSearch(ros::NodeHandle &nh);
 
     // Publich methods
-    void mainLoop();
+    void mainLoop(void);
+    void detection(void); //Move to private?----------
 
 private:
     // Variables
@@ -39,8 +40,9 @@ private:
     double robot_pose_2d;
     tf2::Quaternion quaternion;
     geometry_msgs::PoseStamped goal;
-    cv::Mat image_; // added----------------------------------------------------------------------
-
+    cv::Mat image_;
+    cv::Mat publishImage_;
+    
     // Transform listener
     tf2_ros::Buffer transform_buffer_{};
     tf2_ros::TransformListener transform_listener_{transform_buffer_};
@@ -55,9 +57,11 @@ private:
     // Velocity command publisher
     ros::Publisher move_base_simple_goal_{};
 
-    // Image transport and subscriber
+    // Image transport, Publisher and subscriber
     image_transport::ImageTransport it_;
     image_transport::Subscriber image_sub_{};
+    image_transport::Publisher detection_pub_;
+    sensor_msgs::ImagePtr test_; //
 
     // Action client
     actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> move_base_action_client_{"move_base", true};
@@ -74,5 +78,4 @@ private:
     geometry_msgs::Pose pose2dToPose(const geometry_msgs::Pose2D &pose_2d);
     double wrapAngle(double angle);
     void pathPlanning(double x, double y);
-    void detection(void);
 };
