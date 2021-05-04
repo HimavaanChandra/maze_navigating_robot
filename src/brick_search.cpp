@@ -425,14 +425,14 @@ void BrickSearch::mainLoop()
             cv::waitKey(0);
             // cv::destroyWindow("map image");
         }
-        
+
         if (getGoalReachedStatus() == 3 || lock == false) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
         {
             lock = true;
 
-            std::vector<double> goalWaypoint = BrickSearch::exploration();
+            std::vector<double> goalWaypoint = exploration();
             // BrickSearch::pathPlanning(1.5, 3);
-            BrickSearch::pathPlanning(goalWaypoint.at(0), goalWaypoint.at(1));
+            pathPlanning(goalWaypoint.at(0), goalWaypoint.at(1));
         }
 
         // move_base_action_client_.sendGoal(action_goal.goal);
