@@ -68,7 +68,7 @@ private:
     image_transport::ImageTransport it_;
     image_transport::Subscriber image_sub_{};
     image_transport::Publisher detection_pub_;
-    sensor_msgs::ImagePtr test_; //
+    // sensor_msgs::ImagePtr test_; //
 
     // Action client
     actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> move_base_action_client_{"move_base", true};
