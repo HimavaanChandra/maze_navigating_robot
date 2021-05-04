@@ -39,6 +39,7 @@ private:
     double robot_pose_2d;
     tf2::Quaternion quaternion;
     geometry_msgs::PoseStamped goal;
+    cv::Mat image_; // added----------------------------------------------------------------------
 
     // Transform listener
     tf2_ros::Buffer transform_buffer_{};

@@ -1,5 +1,65 @@
 #include "brick_search.h"
 
+// Constructor
+BrickSearch::BrickSearch(ros::NodeHandle &nh) : it_{nh}
+{
+
+    // Wait for "static_map" service to be available
+    ROS_INFO("Waiting for \"static_map\" service...");
+    ros::service::waitForService("static_map");
+
+    // Get the map
+    nav_msgs::GetMap get_map{};
+
+    if (!ros::service::call("static_map", get_map))
+    {
+        ROS_ERROR("Unable to get map");
+        ros::shutdown();
+    }
+    else
+    {
+        map_ = get_map.response.map;
+        ROS_INFO("Map received");
+    }
+
+    // This allows you to access the map data as an OpenCV image
+    map_image_ = cv::Mat(map_.info.height, map_.info.width, CV_8U, &map_.data.front());
+
+    // Wait for the transform to be become available
+    ROS_INFO("Waiting for transform from \"map\" to \"base_link\"");
+    while (ros::ok() && !transform_buffer_.canTransform("map", "base_link", ros::Time(0.)))
+    {
+        ros::Duration(0.1).sleep();
+    }
+    ROS_INFO("Transform available");
+
+    // Subscribe to "amcl_pose" to get pose covariance
+    amcl_pose_sub_ = nh.subscribe("amcl_pose", 1, &BrickSearch::amclPoseCallback, this);
+
+    // Subscribe to the camera
+    image_sub_ = it_.subscribe("/camera/rgb/image_raw", 1, &BrickSearch::imageCallback, this);
+
+    // Subscribe to the goal status
+    move_base_status_sub_ = nh.subscribe("/move_base/status", 1, &BrickSearch::moveBaseStatusCallback, this);
+
+    // Advertise "cmd_vel" publisher to control TurtleBot manually
+    cmd_vel_pub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel", 1, false);
+
+    // Advertise "move_base_simple_goal" publisher for robot path planning goal
+    move_base_simple_goal_ = nh.advertise<geometry_msgs::PoseStamped>("/move_base_simple/goal", 1, false);
+
+    // Action client for "move_base"
+    ROS_INFO("Waiting for \"move_base\" action...");
+    move_base_action_client_.waitForServer();
+    ROS_INFO("\"move_base\" action available");
+
+    // Reinitialise AMCL
+    ros::ServiceClient global_localization_service_client = nh.serviceClient<std_srvs::Empty>("global_localization");
+    std_srvs::Empty srv{};
+    global_localization_service_client.call(srv);
+}
+
+
 void BrickSearch::pathPlanning(double x, double y)
 {
     if (getGoalReachedStatus() == 3 || lock == false) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
@@ -103,64 +163,7 @@ void BrickSearch::mainLoop()
     }
 }
 
-// Constructor
-BrickSearch::BrickSearch(ros::NodeHandle &nh) : it_{nh}
-{
 
-    // Wait for "static_map" service to be available
-    ROS_INFO("Waiting for \"static_map\" service...");
-    ros::service::waitForService("static_map");
-
-    // Get the map
-    nav_msgs::GetMap get_map{};
-
-    if (!ros::service::call("static_map", get_map))
-    {
-        ROS_ERROR("Unable to get map");
-        ros::shutdown();
-    }
-    else
-    {
-        map_ = get_map.response.map;
-        ROS_INFO("Map received");
-    }
-
-    // This allows you to access the map data as an OpenCV image
-    map_image_ = cv::Mat(map_.info.height, map_.info.width, CV_8U, &map_.data.front());
-
-    // Wait for the transform to be become available
-    ROS_INFO("Waiting for transform from \"map\" to \"base_link\"");
-    while (ros::ok() && !transform_buffer_.canTransform("map", "base_link", ros::Time(0.)))
-    {
-        ros::Duration(0.1).sleep();
-    }
-    ROS_INFO("Transform available");
-
-    // Subscribe to "amcl_pose" to get pose covariance
-    amcl_pose_sub_ = nh.subscribe("amcl_pose", 1, &BrickSearch::amclPoseCallback, this);
-
-    // Subscribe to the camera
-    image_sub_ = it_.subscribe("/camera/rgb/image_raw", 1, &BrickSearch::imageCallback, this);
-
-    // Subscribe to the goal status
-    move_base_status_sub_ = nh.subscribe("/move_base/status", 1, &BrickSearch::moveBaseStatusCallback, this);
-
-    // Advertise "cmd_vel" publisher to control TurtleBot manually
-    cmd_vel_pub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel", 1, false);
-
-    // Advertise "move_base_simple_goal" publisher for robot path planning goal
-    move_base_simple_goal_ = nh.advertise<geometry_msgs::PoseStamped>("/move_base_simple/goal", 1, false);
-
-    // Action client for "move_base"
-    ROS_INFO("Waiting for \"move_base\" action...");
-    move_base_action_client_.waitForServer();
-    ROS_INFO("\"move_base\" action available");
-
-    // Reinitialise AMCL
-    ros::ServiceClient global_localization_service_client = nh.serviceClient<std_srvs::Empty>("global_localization");
-    std_srvs::Empty srv{};
-    global_localization_service_client.call(srv);
-}
 
 geometry_msgs::Pose2D BrickSearch::getPose2d()
 {
@@ -282,7 +285,7 @@ void BrickSearch::detection(void)
 {
     //Convert image
     //BGR2HSV
-    cv::Mat image_ = cv::imread("/home/ros/catkin_ws/src/maze_navigating_robot/imageTuning/image2.jpg"); //Remove and replace with topic/imagecallback
+    // cv::Mat image_ = cv::imread("/home/ros/catkin_ws/src/maze_navigating_robot/imageTuning/image2.jpg"); //Remove and replace with topic/imagecallback
     // cv::Mat image_ = &image; How do I access &image?-----------------------------------------------------------------------------
     cv::Mat hsv; //Make class variable?/Only use one vartaiable to save time for all hsv redMask edges etc--------------------------
     cv::cvtColor(image_, hsv, cv::COLOR_BGR2HSV);
@@ -307,35 +310,39 @@ void BrickSearch::detection(void)
 
     //Get centre position of blob
     //Get moments of contours
-    cv::Moments m = cv::moments(contours[0], true);
-    //centre of blob: https://www.pyimagesearch.com/2016/02/01/opencv-center-of-contour/
-    int cx = m.m10 / m.m00;
-    int cy = m.m01 / m.m00;
-    cv::Point pt(cx, cy);
-    cv::circle(image_, pt, 3, CV_RGB(0, 255, 0), 1);
-
-    double area = cv::contourArea(contours[0]);
-
-    cv::Size size = image_.size();
-    double frameArea = size.width * size.height;
-    std::cout << "Contour Area: " << area << std::endl;    //--------------------------------------------------------
-    std::cout << "Frame Area: " << frameArea << std::endl; //-----------------------------------------------------
-    //Do ratio comparison then initiate takeover?
-    double ratio = area / frameArea;
-    int cutoff = 0; //Adjust------------------------------
-    if (ratio > cutoff)
+    if (contours.size() > 0)
     {
-        //Take over control till ratio is certain amount. - This might need to be in higher loop so that values can be recalculated or not
+        cv::Moments m = cv::moments(contours[0], true);
+        //centre of blob: https://www.pyimagesearch.com/2016/02/01/opencv-center-of-contour/
+        int cx = m.m10 / m.m00;
+        int cy = m.m01 / m.m00;
+        cv::Point pt(cx, cy);
+        cv::circle(image_, pt, 3, CV_RGB(0, 255, 0), 1);
 
-        //Set linear and angular velocity override
-        geometry_msgs::Twist twist{};
-        twist.angular.z = 0.;
-        twist.linear.x = 0;
-        // cmd_vel_pub_.publish(twist); //Needs to be redefined?------------------------------
+        double area = cv::contourArea(contours[0]);
+
+        cv::Size size = image_.size();
+        double frameArea = size.width * size.height;
+        std::cout << "Contour Area: " << area << std::endl;    //--------------------------------------------------------
+        std::cout << "Frame Area: " << frameArea << std::endl; //-----------------------------------------------------
+        //Do ratio comparison then initiate takeover?
+        double ratio = area / frameArea;
+        int cutoff = 0; //Adjust------------------------------
     }
+    // if (ratio > cutoff)
+    // {
+    //   //Take over control till ratio is certain amount. - This might need to be in higher loop so that values can be recalculated or not
 
-    cv::imshow("Finalimage", image_); //Delete -----------------------------------------
-    cv::waitKey(0);                   //Delete------------------------------------------------------------
+    //   //Set linear and angular velocity override
+    //   geometry_msgs::Twist twist{};
+    //   twist.angular.z = 0.;
+    //   twist.linear.x = 0;
+    //   // cmd_vel_pub_.publish(twist); //Needs to be redefined?------------------------------
+    // }
+
+    ROS_INFO("Converted image");
+    cv::imshow("view", image_); //Delete -----------------------------------------
+                                // cv::waitKey(0);                   //Delete------------------------------------------------------------
 
     //Publish image to topic for debugging and report--------------------
 }
