@@ -22,9 +22,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 catkin_package()
 
-add_executable(main
-        src/main.cpp
-        )
+add_executable(main src/main.cpp src/brick_search.cpp)
 
 target_include_directories(main SYSTEM PRIVATE ${OpenCV_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS})
 target_include_directories(main PRIVATE include)
