@@ -26,7 +26,7 @@ public:
 
     // Publich methods
     void mainLoop(void);
-    void detection(void); //Move to private?----------
+    // void detection(void); //Move to private?----------
 
 private:
     // Variables
@@ -37,12 +37,19 @@ private:
     int image_msg_count_ = 0;
     int goal_reached_status = 3; // 0 = goal not reached 3 = goal reached 4 = Failed to find a valid plan. Even after executing recovery behaviors.
     bool lock = false;
-    double robot_pose_2d;
     tf2::Quaternion quaternion;
     geometry_msgs::PoseStamped goal;
     cv::Mat image_;
     cv::Mat publishImage_;
-    
+
+    // // Structures
+    // struct robot_pose_2d
+    // {
+    //     double x;
+    //     double y;
+    //     double theta;
+    // };
+
     // Transform listener
     tf2_ros::Buffer transform_buffer_{};
     tf2_ros::TransformListener transform_listener_{transform_buffer_};
@@ -54,7 +61,7 @@ private:
     // Velocity command publisher
     ros::Publisher cmd_vel_pub_{};
 
-    // Velocity command publisher
+    // Movement goal command publisher
     ros::Publisher move_base_simple_goal_{};
 
     // Image transport, Publisher and subscriber
@@ -78,4 +85,11 @@ private:
     geometry_msgs::Pose pose2dToPose(const geometry_msgs::Pose2D &pose_2d);
     double wrapAngle(double angle);
     void pathPlanning(double x, double y);
+    void detection(void);
+    std::vector<double> exploration(void);
+
+    int meterY2grid(double y);
+    int meterX2grid(double X);
+    double grid2meterX(int x);
+    double grid2meterY(int y);
 };

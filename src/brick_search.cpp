@@ -225,30 +225,110 @@ void BrickSearch::detection(void)
 
 void BrickSearch::pathPlanning(double x, double y)
 {
-    if (getGoalReachedStatus() == 3 || lock == false) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
+
+    goal = {};
+
+    // i++;
+    goal.pose.position.x = x;
+    goal.pose.position.y = y;
+
+    // robot_pose_2d = getPose2d();
+    quaternion.setRPY(0, 0, getPose2d().theta);
+
+    goal.pose.orientation.w = quaternion.getW();
+    goal.pose.orientation.x = quaternion.getX();
+    goal.pose.orientation.y = quaternion.getY();
+    goal.pose.orientation.z = quaternion.getZ();
+
+    goal.header.frame_id = "map";
+
+    move_base_simple_goal_.publish(goal);
+
+    ROS_INFO("Sending goal...");
+}
+
+int BrickSearch::meterY2grid(double y)
+{
+    int gy = round((map_.info.height / 2 - y) / map_.info.resolution);
+    if (gy > map_.info.height - 1)
+        gy = map_.info.height - 1;
+    if (gy < 0)
+        gy = 0;
+    return gy;
+}
+
+int BrickSearch::meterX2grid(double x)
+{
+    int gx = round((map_.info.width / 2 - x) / map_.info.resolution);
+    if (gx > map_.info.width - 1)
+        gx = map_.info.width - 1;
+    if (gx < 0)
+        gx = 0;
+    return gx;
+}
+
+double BrickSearch::grid2meterX(int x)
+{
+    double nx = x * map_.info.resolution - map_.info.width / 2 + map_.info.resolution / 2;
+    return nx;
+}
+
+double BrickSearch::grid2meterY(int y)
+{
+    double ny = y * map_.info.resolution - map_.info.width / 2 + map_.info.resolution / 2;
+    return ny;
+}
+
+std::vector<double> BrickSearch::exploration(void)
+{
+    // map_image_;'';
+
+    std::vector<std::vector<int>> grid_cost;
+
+    grid_cost.resize(map_.info.width);
+    for (int i = 0; i < map_.info.width; ++i)
     {
-        lock = true;
-
-        goal = {};
-
-        // i++;
-        goal.pose.position.x = x;
-        goal.pose.position.y = y;
-
-        robot_pose_2d = getPose2d().theta;
-        quaternion.setRPY(0, 0, robot_pose_2d);
-
-        goal.pose.orientation.w = quaternion.getW();
-        goal.pose.orientation.x = quaternion.getX();
-        goal.pose.orientation.y = quaternion.getY();
-        goal.pose.orientation.z = quaternion.getZ();
-
-        goal.header.frame_id = "map";
-
-        move_base_simple_goal_.publish(goal);
-
-        ROS_INFO("Sending goal...");
+        grid_cost.at(i).resize(map_.info.height);
     }
+
+    std::vector<int> min_cost_grid = {0, 0};
+    std::vector<double> min_cost_waypoint = {0, 0};
+
+    // calculate heuristic of all grids from current robot position
+    std::cout << std::endl
+              << "Initialising heuristic cost grid" << std::endl;
+
+    // Looping through each node/grid in the gripmap_
+    for (int i = 0; i < map_.info.height; i++)
+    {
+        for (int j = 0; j < map_.info.width; j++)
+        {
+            // Change in x distance between the current node/grid and the goal_node position
+            int x = std::abs(i - meterX2grid(getPose2d().x));
+
+            // Change in x distance between the current node/grid and the goal_node position
+            int y = std::abs(j - meterY2grid(getPose2d().y));
+
+            // Heuristic for each grid/node equals combined x and y distance, which is equivelant to the number of moves to reach the goal node
+            grid_cost.at(i).at(j) = x + y;
+
+            if (grid_cost.at(i).at(j) < grid_cost.at(min_cost_grid.at(0)).at(min_cost_grid.at(1)) && (map_image_.at<int>(i, j) == 0))
+            {
+                min_cost_grid = {i, j};
+            }
+        }
+    }
+
+    double waypoint_x = grid2meterX(min_cost_grid.at(0));
+    double waypoint_y = grid2meterY(min_cost_grid.at(1));
+
+    min_cost_waypoint = {waypoint_x, waypoint_y};
+
+    return min_cost_waypoint;
+
+    // set waypoint for lowest cost huesrisitci (closest to robot) that is also black (unknown)
+
+    // return waypoint from function. Use returned waypoint as input fro path planning function.
 }
 
 geometry_msgs::Pose2D BrickSearch::getPose2d()
@@ -359,7 +439,7 @@ void BrickSearch::mainLoop(void)
     // ROS_INFO("Sending goal...");
     // move_base_action_client_.sendGoal(action_goal.goal);
 
-    int i = 0;
+    // int i = 0;
     // This loop repeats until ROS shuts down, you probably want to put all your code in here
     while (ros::ok())
     {
@@ -371,6 +451,23 @@ void BrickSearch::mainLoop(void)
         detection(); //Delete or keep?-------------------------------------
 
         // BrickSearch::pathPlanning(1.5, 3);
+        // std::cout << "map image: " << map_image_ << std::endl;
+
+        if (lock == false)
+        {
+            cv::imshow("map image", map_image_);
+            cv::waitKey(0);
+            // cv::destroyWindow("map image");
+        }
+
+        if (getGoalReachedStatus() == 3 || lock == false) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
+        {
+            lock = true;
+
+            std::vector<double> goalWaypoint = exploration();
+            // BrickSearch::pathPlanning(1.5, 3);
+            pathPlanning(goalWaypoint.at(0), goalWaypoint.at(1));
+        }
 
         // move_base_action_client_.sendGoal(action_goal.goal);
 
