@@ -59,131 +59,6 @@ BrickSearch::BrickSearch(ros::NodeHandle &nh) : it_{nh}
     global_localization_service_client.call(srv);
 }
 
-
-void BrickSearch::pathPlanning(double x, double y)
-{
-    if (getGoalReachedStatus() == 3 || lock == false) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
-    {
-        lock = true;
-
-        goal = {};
-
-        // i++;
-        goal.pose.position.x = x;
-        goal.pose.position.y = y;
-
-        robot_pose_2d = getPose2d().theta;
-        quaternion.setRPY(0, 0, robot_pose_2d);
-
-        goal.pose.orientation.w = quaternion.getW();
-        goal.pose.orientation.x = quaternion.getX();
-        goal.pose.orientation.y = quaternion.getY();
-        goal.pose.orientation.z = quaternion.getZ();
-
-        goal.header.frame_id = "map";
-
-        move_base_simple_goal_.publish(goal);
-
-        ROS_INFO("Sending goal...");
-    }
-}
-
-void BrickSearch::mainLoop()
-{
-    // Wait for the TurtleBot to localise
-    ROS_INFO("Localising...");
-    while (ros::ok())
-    {
-
-        // Turn slowly
-        geometry_msgs::Twist twist{};
-        twist.angular.z = 1.;
-        cmd_vel_pub_.publish(twist);
-
-        if (localised_)
-        {
-            ROS_INFO("Localised");
-            break;
-        }
-
-        ros::Duration(0.1).sleep();
-    }
-
-    // Stop turning
-    geometry_msgs::Twist twist{};
-    twist.angular.z = 0.;
-    cmd_vel_pub_.publish(twist);
-
-    // The map is stored in "map_"
-    // You will probably need the data stored in "map_.info"
-    // You can also access the map data as an OpenCV image with "map_image_"
-
-    // Here's an example of getting the current pose and sending a goal to "move_base":
-    // geometry_msgs::Pose2D pose_2d = getPose2d();
-
-    // ROS_INFO_STREAM("Current pose: " << pose_2d);
-
-    // // Move forward 0.5 m
-    // pose_2d.x += 0.5 * std::cos(pose_2d.theta);
-    // pose_2d.y += 0.5 * std::sin(pose_2d.theta);
-
-    // ROS_INFO_STREAM("Target pose: " << pose_2d);
-
-    // // Send a goal to "move_base" with "move_base_action_client_"
-    // move_base_msgs::MoveBaseActionGoal action_goal{};
-
-    // action_goal.goal.target_pose.header.frame_id = "map";
-    // action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
-
-    // ROS_INFO("Sending goal...");
-    // move_base_action_client_.sendGoal(action_goal.goal);
-
-    int i = 0;
-    // This loop repeats until ROS shuts down, you probably want to put all your code in here
-    while (ros::ok())
-    {
-        ROS_INFO("mainLoop");
-
-        // Delay so the loop doesn't run too fast
-        ros::Duration(0.2).sleep();
-
-        BrickSearch::pathPlanning(1.5, 3);
-
-        // move_base_action_client_.sendGoal(action_goal.goal);
-
-        // Desired seach x,y position
-        // Covert into required units (x,y or meters)
-
-        // path_planning_algorithm(desired position) - From package or custom?
-
-        // pure_pursuit_algorithm(planned path) - From package or custom? (package probably better?)
-
-        // If box found? - Inside pure_pursuit_algorithm? Or here is ok if pure_pursuit is seperate thread or ROS package
-        // Use open CV to move straight to the box or path planning to recalculate a path to the box position (calulcated using lidar or depth camera with current robot position)
-    }
-}
-
-
-
-geometry_msgs::Pose2D BrickSearch::getPose2d()
-{
-    // Lookup latest transform
-    geometry_msgs::TransformStamped transform_stamped =
-        transform_buffer_.lookupTransform("map", "base_link", ros::Time(0.), ros::Duration(0.2));
-
-    // Return a Pose2D message
-    geometry_msgs::Pose2D pose{};
-    pose.x = transform_stamped.transform.translation.x;
-    pose.y = transform_stamped.transform.translation.y;
-
-    double qw = transform_stamped.transform.rotation.w;
-    double qz = transform_stamped.transform.rotation.z;
-
-    pose.theta = qz >= 0. ? wrapAngle(2. * std::acos(qw)) : wrapAngle(-2. * std::acos(qw));
-
-    return pose;
-}
-
 void BrickSearch::amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped &pose_msg)
 {
 
@@ -251,6 +126,56 @@ void BrickSearch::moveBaseStatusCallback(const actionlib_msgs::GoalStatusArray &
         // std::cout << "back: " << moveBaseStatus_msg_ptr.status_list.back().status << std::endl;
     }
 }
+
+
+void BrickSearch::pathPlanning(double x, double y)
+{
+    if (getGoalReachedStatus() == 3 || lock == false) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
+    {
+        lock = true;
+
+        goal = {};
+
+        // i++;
+        goal.pose.position.x = x;
+        goal.pose.position.y = y;
+
+        robot_pose_2d = getPose2d().theta;
+        quaternion.setRPY(0, 0, robot_pose_2d);
+
+        goal.pose.orientation.w = quaternion.getW();
+        goal.pose.orientation.x = quaternion.getX();
+        goal.pose.orientation.y = quaternion.getY();
+        goal.pose.orientation.z = quaternion.getZ();
+
+        goal.header.frame_id = "map";
+
+        move_base_simple_goal_.publish(goal);
+
+        ROS_INFO("Sending goal...");
+    }
+}
+
+geometry_msgs::Pose2D BrickSearch::getPose2d()
+{
+    // Lookup latest transform
+    geometry_msgs::TransformStamped transform_stamped =
+        transform_buffer_.lookupTransform("map", "base_link", ros::Time(0.), ros::Duration(0.2));
+
+    // Return a Pose2D message
+    geometry_msgs::Pose2D pose{};
+    pose.x = transform_stamped.transform.translation.x;
+    pose.y = transform_stamped.transform.translation.y;
+
+    double qw = transform_stamped.transform.rotation.w;
+    double qz = transform_stamped.transform.rotation.z;
+
+    pose.theta = qz >= 0. ? wrapAngle(2. * std::acos(qw)) : wrapAngle(-2. * std::acos(qw));
+
+    return pose;
+}
+
+
 
 double BrickSearch::wrapAngle(double angle)
 {
@@ -356,3 +281,82 @@ void BrickSearch::setGoalReachedStatus(int status)
 {
     goal_reached_status = status;
 }
+
+
+void BrickSearch::mainLoop()
+{
+    // Wait for the TurtleBot to localise
+    ROS_INFO("Localising...");
+    while (ros::ok())
+    {
+
+        // Turn slowly
+        geometry_msgs::Twist twist{};
+        twist.angular.z = 1.;
+        cmd_vel_pub_.publish(twist);
+
+        if (localised_)
+        {
+            ROS_INFO("Localised");
+            break;
+        }
+
+        ros::Duration(0.1).sleep();
+    }
+
+    // Stop turning
+    geometry_msgs::Twist twist{};
+    twist.angular.z = 0.;
+    cmd_vel_pub_.publish(twist);
+
+    // The map is stored in "map_"
+    // You will probably need the data stored in "map_.info"
+    // You can also access the map data as an OpenCV image with "map_image_"
+
+    // Here's an example of getting the current pose and sending a goal to "move_base":
+    // geometry_msgs::Pose2D pose_2d = getPose2d();
+
+    // ROS_INFO_STREAM("Current pose: " << pose_2d);
+
+    // // Move forward 0.5 m
+    // pose_2d.x += 0.5 * std::cos(pose_2d.theta);
+    // pose_2d.y += 0.5 * std::sin(pose_2d.theta);
+
+    // ROS_INFO_STREAM("Target pose: " << pose_2d);
+
+    // // Send a goal to "move_base" with "move_base_action_client_"
+    // move_base_msgs::MoveBaseActionGoal action_goal{};
+
+    // action_goal.goal.target_pose.header.frame_id = "map";
+    // action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
+
+    // ROS_INFO("Sending goal...");
+    // move_base_action_client_.sendGoal(action_goal.goal);
+
+    int i = 0;
+    // This loop repeats until ROS shuts down, you probably want to put all your code in here
+    while (ros::ok())
+    {
+        ROS_INFO("mainLoop");
+
+        // Delay so the loop doesn't run too fast
+        ros::Duration(0.2).sleep();
+
+        BrickSearch::pathPlanning(1.5, 3);
+
+        // move_base_action_client_.sendGoal(action_goal.goal);
+
+        // Desired seach x,y position
+        // Covert into required units (x,y or meters)
+
+        // path_planning_algorithm(desired position) - From package or custom?
+
+        // pure_pursuit_algorithm(planned path) - From package or custom? (package probably better?)
+
+        // If box found? - Inside pure_pursuit_algorithm? Or here is ok if pure_pursuit is seperate thread or ROS package
+        // Use open CV to move straight to the box or path planning to recalculate a path to the box position (calulcated using lidar or depth camera with current robot position)
+    }
+}
+
+
+
