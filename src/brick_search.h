@@ -41,6 +41,7 @@ private:
     geometry_msgs::PoseStamped goal;
     cv::Mat image_;
     cv::Mat publishImage_;
+    cv::Mat trackmap_; // Check if used
 
     // // Structures
     // struct robot_pose_2d
@@ -68,7 +69,11 @@ private:
     image_transport::ImageTransport it_;
     image_transport::Subscriber image_sub_{};
     image_transport::Publisher detection_pub_;
-    // sensor_msgs::ImagePtr test_; //
+    
+
+    // Lidar Subscriber and data
+    ros::Subscriber laser_sub_;
+    std::vector<float> ranges_;
 
     // Action client
     actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> move_base_action_client_{"move_base", true};
@@ -77,6 +82,7 @@ private:
     void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped &pose_msg);
     void imageCallback(const sensor_msgs::ImageConstPtr &image_msg_ptr);
     void moveBaseStatusCallback(const actionlib_msgs::GoalStatusArray &moveBaseStatus_msg_ptr);
+    void laserCallback(const sensor_msgs::LaserScanConstPtr &msg);
 
     int getGoalReachedStatus(void);
     void setGoalReachedStatus(int status);
@@ -87,6 +93,7 @@ private:
     void pathPlanning(double x, double y);
     void detection(void);
     std::vector<double> exploration(void);
+    void searchedArea(void);
 
     int meterY2grid(double y);
     int meterX2grid(double X);

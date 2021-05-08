@@ -42,6 +42,9 @@ BrickSearch::BrickSearch(ros::NodeHandle &nh) : it_{nh}
     // Subscribe to the goal status
     move_base_status_sub_ = nh.subscribe("/move_base/status", 1, &BrickSearch::moveBaseStatusCallback, this);
 
+    // Subscribe to lidat
+    laser_sub_ = nh_.subscribe("/scan", 10, &BrickSearch::laserCallback, this);
+
     // Advertise "cmd_vel" publisher to control TurtleBot manually
     cmd_vel_pub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel", 1, false);
 
@@ -114,6 +117,11 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr &image_msg_ptr)
 
     ROS_INFO("imageCallback");
     ROS_INFO_STREAM("brick_found_: " << brick_found_);
+}
+
+void TurtleFollow::laserCallback(const sensor_msgs::LaserScanConstPtr &msg)
+{
+    ranges_ = msg->ranges;
 }
 
 void BrickSearch::moveBaseStatusCallback(const actionlib_msgs::GoalStatusArray &moveBaseStatus_msg_ptr)
@@ -285,68 +293,142 @@ geometry_msgs::Pose BrickSearch::pose2dToPose(const geometry_msgs::Pose2D &pose_
 
 void BrickSearch::detection(void)
 {
-    //Convert image
-    //BGR2HSV
-    // cv::Mat image_ = cv::imread("/home/ros/catkin_ws/src/maze_navigating_robot/imageTuning/image2.jpg"); //Remove and replace with topic/imagecallback
-    // cv::Mat image_ = &image; How do I access &image?-----------------------------------------------------------------------------
-    cv::Mat hsv; //Make class variable?/Only use one vartaiable to save time for all hsv redMask edges etc--------------------------
-    cv::cvtColor(image_, hsv, cv::COLOR_BGR2HSV);
-
-    //https://docs.opencv.org/3.4/da/d97/tutorial_threshold_inRange.html
-    //Threshold to isolate Red
-    cv::Mat redMask;
-    //Sim
-    // cv::inRange(hsv, cv::Scalar(0, 127, 50), cv::Scalar(6, 255, 255), redMask);
-    //Real Robot
-    cv::inRange(hsv, cv::Scalar(0, 127, 50), cv::Scalar(6, 255, 255), redMask);
-
-    //Draw box around red blob
-    cv::Mat edges;
-    cv::Canny(redMask, edges, 400, 1400, 3);
-
-    //Find contours: https://docs.opencv.org/master/d4/d73/tutorial_py_contours_begin.html
-    std::vector<std::vector<cv::Point>> contours;
-    cv::findContours(edges, contours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
-    //Draw contours
-    cv::drawContours(image_, contours, 0, cv::Scalar(0, 255, 0), 2);
-
-    //Get centre position of blob
-    //Get moments of contours
-    if (contours.size() > 0)
+    if (!image_.empty())
     {
-        cv::Moments m = cv::moments(contours[0], true);
-        //centre of blob: https://www.pyimagesearch.com/2016/02/01/opencv-center-of-contour/
-        int cx = m.m10 / m.m00;
-        int cy = m.m01 / m.m00;
-        cv::Point pt(cx, cy);
-        cv::circle(image_, pt, 3, CV_RGB(0, 255, 0), 1);
+        publishImage_ = image_;
+        //BGR2HSV conversion
+        cv::Mat hsv;
+        cv::cvtColor(publishImage_, hsv, cv::COLOR_BGR2HSV);
 
-        double area = cv::contourArea(contours[0]);
+        //https://docs.opencv.org/3.4/da/d97/tutorial_threshold_inRange.html
+        //Threshold to isolate Red
+        cv::Mat redMask;
+        //Real Robot
+        // cv::inRange(hsv, cv::Scalar(0, 127, 50), cv::Scalar(6, 255, 255), redMask);
+        //Sim
+        cv::inRange(hsv, cv::Scalar(0, 127, 50), cv::Scalar(6, 255, 255), redMask);
 
-        cv::Size size = image_.size();
-        double frameArea = size.width * size.height;
-        std::cout << "Contour Area: " << area << std::endl;    //--------------------------------------------------------
-        std::cout << "Frame Area: " << frameArea << std::endl; //-----------------------------------------------------
-        //Do ratio comparison then initiate takeover?
-        double ratio = area / frameArea;
-        int cutoff = 0; //Adjust------------------------------
+        //Draw box around red blob
+        cv::Mat edges;
+        cv::Canny(redMask, edges, 400, 1400, 3);
+
+        //Find contours: https://docs.opencv.org/master/d4/d73/tutorial_py_contours_begin.html
+        std::vector<std::vector<cv::Point>> contours;
+        cv::findContours(edges, contours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+        //Draw contours
+        cv::drawContours(publishImage_, contours, 0, cv::Scalar(0, 255, 0), 2);
+
+        //Get centre position of blob
+        if (contours.size() > 0)
+        {
+            //Get moments of contours
+            cv::Moments m = cv::moments(contours[0], true);
+            //centre of blob: https://www.pyimagesearch.com/2016/02/01/opencv-center-of-contour/
+            int cx = m.m10 / m.m00;
+            int cy = m.m01 / m.m00;
+            cv::Point pt(cx, cy);
+            cv::circle(publishImage_, pt, 3, CV_RGB(0, 255, 0), 1);
+
+            double area = cv::contourArea(contours[0]);
+
+            cv::Size size = publishImage_.size();
+            double frameArea = size.width * size.height;
+            //Do ratio comparison then initiate takeover?
+            double ratio = area / frameArea;
+            int cutoff = 0; //Adjust if doing override---------------------------------
+            std::cout << "Contour Area: " << area << std::endl;    //--------Delete------------------------------------------------
+            std::cout << "Frame Area: " << frameArea << std::endl; //--------Delete---------------------------------------------
+            std::cout << "Ratio: " << ratio << std::endl; //--------Delete---------------------------------------------
+            brick_found_ = true;
+        }
+        else
+        {
+            brick_found_ = false;
+        }
+        //Delete if not used---------------------------------------------------------------
+        // if (ratio > cutoff)
+        // {
+        //   //Take over control till ratio is certain amount. - This might need to be in higher loop so that values can be recalculated or not
+
+        //   //Set linear and angular velocity override
+        //   geometry_msgs::Twist twist{};
+        //   twist.angular.z = 0.;
+        //   twist.linear.x = 0;
+        //   // cmd_vel_pub_.publish(twist); //Needs to be redefined?------------------------------
+        // }
+
+        //Publish image
+        detection_pub_.publish(cv_bridge::CvImage(std_msgs::Header(), "bgr8", publishImage_).toImageMsg());
     }
-    // if (ratio > cutoff)
-    // {
-    //   //Take over control till ratio is certain amount. - This might need to be in higher loop so that values can be recalculated or not
+}
 
-    //   //Set linear and angular velocity override
-    //   geometry_msgs::Twist twist{};
-    //   twist.angular.z = 0.;
-    //   twist.linear.x = 0;
-    //   // cmd_vel_pub_.publish(twist); //Needs to be redefined?------------------------------
-    // }
+void BrickSearch::searchedArea(void)
+{
+    trackmap_ = map_image //This might constantly get overwritten and not work
 
-    ROS_INFO("Converted image");
-    cv::imshow("view", image_); //Delete -----------------------------------------
-                                // cv::waitKey(0);                   //Delete------------------------------------------------------------
+    //70 degree FOV - 35 on each side
+    double robotX = meterX2grid(getPose2d().x)); //Make struct?---------------------------------------------------------------
+    double robotY = meterY2grid(getPose2d().y)); //Make struct?---------------------------------------------------------------
+    double robotTheta = getPose2d().theta;
+    double modulusAngle = robotTheta/(M_PI/2);
+    std::vector<float> rangesInFOV;
+    for (int i = 0; i < ranges_.size(); i++)
+    {
+        // if (((i >= (ranges_.size() - 35)) && i <= ranges_.size() - 1) || (i >= 0 && i <= 15)) //Check the -1
+        if (((i >= (ranges_.size() - 35)) && i <= ranges_.size()) || (i >= 0 && i <= 35))
+        {
+            // rangesInFOV.push_back(ranges_.at(i));
 
-    //Publish image to topic for debugging and report--------------------
+            //i is angle relative to centre straight up
+
+
+            int pixelX = 0; //Edit
+            int pixelY = 0; //Edit
+            double gradient = (pixelY - robotY) / (pixelX - robotX);
+            double b = robotY - (gradient * robotX);
+            if (robotX < pixelX) 
+            {
+                for (int k = robotX; k < pixelX; k++)
+                {
+                    double y = gradient*k + b;
+                    trackmap_[y][k] = 255; 
+                }
+            }
+            else
+            {
+                for (int k = robotX; k > pixelX; k--)
+                {
+                    double y = gradient*k + b;
+                    trackmap_[y][k] = 255; 
+                }
+            }
+        }
+    }
+
+    // cv::imshow("map image", map_image_);
+    // cv::waitKey(0);
+    // cv::destroyWindow("map image");
+
+    //Do check for brick
+    //If brick check depth image for location
+    //Add distance to the turtlbot's coords
+    //Publish pose to RVIZ/map?
+    //else
+    // map_image_;
+
+    //Need to get triangle of focus
+
+    //Get each ray of focus?
+
+    //Compare to lidar values/Depth image in cone
+    ///camera/depth/points for depth values
+    //If using depth image only need 1 strip of data
+    //Get the equation of each ray
+    //Get limits of each ray from depth image
+    //Change map colour pixels to show searched
+
+    //Save map - Might need mutexes in this
+    //Or could return the map at the end of the function
 }
 
 int BrickSearch::getGoalReachedStatus(void)
