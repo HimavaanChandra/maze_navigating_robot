@@ -177,7 +177,7 @@ int BrickSearch::meterY2grid(double y)
 
 int BrickSearch::meterX2grid(double x)
 {
-    int gx = round((map_.info.width / 2 - x) / map_.info.resolution);
+    int gx = round((x + map_.info.width / 2) / map_.info.resolution);
     if (gx > map_.info.width - 1)
         gx = map_.info.width - 1;
     if (gx < 0)
@@ -193,7 +193,7 @@ double BrickSearch::grid2meterX(int x)
 
 double BrickSearch::grid2meterY(int y)
 {
-    double ny = y * map_.info.resolution - map_.info.width / 2 + map_.info.resolution / 2;
+    double ny = y * map_.info.resolution - map_.info.width / 2 - map_.info.resolution / 2;
     return ny;
 }
 
@@ -446,10 +446,10 @@ void BrickSearch::searchedArea(void)
             std::cout << ranges_.at(i) << ", ";//---------------------------------------------------
             // Calculate angle of current lidar ray
             double map_angle = wrapAngle(robot_theta + (i * M_PI) / 180);
-
             // calculate x position where current lidar ray ends
             ray_x = meterX2grid(ranges_.at(i) * cos(map_angle));
             ray_x = ray_x + robot_x;
+std::cout<<"ray_x: "<<ray_x<<std::endl;
 
             // calculate y position where current lidar ray ends
             ray_y = meterY2grid(ranges_.at(i) * sin(map_angle));
