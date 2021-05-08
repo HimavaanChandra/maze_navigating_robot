@@ -130,6 +130,15 @@ void BrickSearch::laserCallback(const sensor_msgs::LaserScanConstPtr &msg)
     ranges_ = msg->ranges;
 }
 
+void BrickSearch::odomCallback(const nav_msgs::OdometryConstPtr &msg)
+{
+  geometry_msgs::Pose pose = msg->pose.pose;
+  tRobotx_ = pose.position.x;
+  tRoboty_ = pose.position.y;
+  //Check if when robot_.angle_ is empty/initialised, the program crashes?-------------------------------
+  tRobottheta_ = tf::getYaw(pose.orientation);
+}
+
 void BrickSearch::moveBaseStatusCallback(const actionlib_msgs::GoalStatusArray &moveBaseStatus_msg_ptr)
 {
 
