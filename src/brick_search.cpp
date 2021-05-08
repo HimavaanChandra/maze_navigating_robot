@@ -188,7 +188,7 @@ int BrickSearch::meterX2grid(double x)
 
 int BrickSearch::meterY2pixel(double y)
 {
-    int gy = round((5 / 2 - y) / (1 / image_size));
+    int gy = round((20 / 2 - y) / map_.info.resolution);
     if (gy > map_.info.height - 1)
         gy = map_.info.height - 1;
     if (gy < 0)
@@ -198,7 +198,7 @@ int BrickSearch::meterY2pixel(double y)
 
 int BrickSearch::meterX2pixel(double x)
 {
-    int gx = round((x + 5 / 2) / (1 / image_size));
+    int gx = round((x + 20 / 2) / map_.info.resolution);
     if (gx > map_.info.width - 1)
         gx = map_.info.width - 1;
     if (gx < 0)
@@ -457,7 +457,6 @@ void BrickSearch::searchedArea(void)
     double ray_y;
 
     std::vector<float> rangesInFOV;
-cv::Point scan(0, 0);
 
     std::cout << "Ranges: "; //------------------------------------------
     for (int i = 0; i < ranges_.size(); i++)
@@ -481,9 +480,9 @@ cv::Point scan(0, 0);
             cv::line(track_map_, robot, scan, cv::Scalar(255, 255, 255), 1);
         }
     }
-    std::cout << std::endl;                                          //---------------------------------------------------------
-    cv::circle(track_map_, robot, 3, CV_RGB(255, 0, 0), 1);          //Red
-    cv::circle(track_map_, scan, 3, CV_RGB(0, 255, 0), 1); //green
+    std::cout << std::endl;                                 //---------------------------------------------------------
+    cv::circle(track_map_, robot, 3, CV_RGB(255, 0, 0), 1); //Red
+    cv::circle(track_map_, scan, 3, CV_RGB(0, 255, 0), 1);  //green
     cv::Size test = track_map_.size();
     std::cout << "ray: " << ray_x << "," << ray_y << std::endl;
     std::cout << "robot: " << robot_x << "," << robot_y << std::endl;
