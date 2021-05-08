@@ -1,7 +1,7 @@
 #include "brick_search.h"
 
 // Constructor
-BrickSearch::BrickSearch(ros::NodeHandle &nh) : it_{nh}
+BrickSearch::BrickSearch(ros::NodeHandle &nh) : it_{nh}, ratio(0), override(false)
 {
 
     // Wait for "static_map" service to be available
@@ -44,6 +44,12 @@ BrickSearch::BrickSearch(ros::NodeHandle &nh) : it_{nh}
 
     // Subscribe to lidar
     laser_sub_ = nh.subscribe("/scan", 10, &BrickSearch::laserCallback, this);
+
+    // Publish the processed camera image
+    detection_pub_ = it_.advertise("/detection_image", 1);
+
+    // Publish searched area
+    searched_area_pub_ = it_.advertise("/searched_area", 1);
 
     // Advertise "cmd_vel" publisher to control TurtleBot manually
     cmd_vel_pub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel", 1, false);
@@ -295,10 +301,10 @@ void BrickSearch::detection(void)
 {
     if (!image_.empty())
     {
-        publishImage_ = image_;
+        publish_image_ = image_;
         //BGR2HSV conversion
         cv::Mat hsv;
-        cv::cvtColor(publishImage_, hsv, cv::COLOR_BGR2HSV);
+        cv::cvtColor(publish_image_, hsv, cv::COLOR_BGR2HSV);
 
         //https://docs.opencv.org/3.4/da/d97/tutorial_threshold_inRange.html
         //Threshold to isolate Red
@@ -316,7 +322,7 @@ void BrickSearch::detection(void)
         std::vector<std::vector<cv::Point>> contours;
         cv::findContours(edges, contours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
         //Draw contours
-        cv::drawContours(publishImage_, contours, 0, cv::Scalar(0, 255, 0), 2);
+        cv::drawContours(publish_image_, contours, 0, cv::Scalar(0, 255, 0), 2);
 
         //Get centre position of blob
         if (contours.size() > 0)
@@ -324,18 +330,18 @@ void BrickSearch::detection(void)
             //Get moments of contours
             cv::Moments m = cv::moments(contours[0], true);
             //centre of blob: https://www.pyimagesearch.com/2016/02/01/opencv-center-of-contour/
-            int cx = m.m10 / m.m00;
-            int cy = m.m01 / m.m00;
+            cx = m.m10 / m.m00;
+            cy = m.m01 / m.m00;
             cv::Point pt(cx, cy);
-            cv::circle(publishImage_, pt, 3, CV_RGB(0, 255, 0), 1);
+            cv::circle(publish_image_, pt, 3, CV_RGB(0, 255, 0), 1);
 
             double area = cv::contourArea(contours[0]);
 
-            cv::Size size = publishImage_.size();
+            size = publish_image_.size();
             double frameArea = size.width * size.height;
             //Do ratio comparison then initiate takeover?
-            double ratio = area / frameArea;
-            int cutoff = 0; //Adjust if doing override---------------------------------
+            ratio = area / frameArea;
+            cutoff = 0.8; //Adjust if doing override------------------------------------
             std::cout << "Contour Area: " << area << std::endl;    //--------Delete------------------------------------------------
             std::cout << "Frame Area: " << frameArea << std::endl; //--------Delete---------------------------------------------
             std::cout << "Ratio: " << ratio << std::endl; //--------Delete---------------------------------------------
@@ -345,64 +351,60 @@ void BrickSearch::detection(void)
         {
             brick_found_ = false;
         }
-        //Delete if not used---------------------------------------------------------------
-        // if (ratio > cutoff)
-        // {
-        //   //Take over control till ratio is certain amount. - This might need to be in higher loop so that values can be recalculated or not
+        bool centred = false; //Could create an error here----------------------------------------------------------
 
-        //   //Set linear and angular velocity override
-        //   geometry_msgs::Twist twist{};
-        //   twist.angular.z = 0.;
-        //   twist.linear.x = 0;
-        //   // cmd_vel_pub_.publish(twist); //Needs to be redefined?------------------------------
+        if (ratio > cutoff && brick_found_) //Might need to adjust this
+        {
+            override = true;
+          //Take over control till ratio is certain amount. - This might need to be in higher loop so that values can be recalculated or not
+
+          //Set linear and angular velocity override
+          geometry_msgs::Twist twist{};
+          
+          ros::Rate rate(10);
+          
+          while (!centred) //Check condition
+          {
+            twist.angular.z = 0;
+            twist.linear.x = 0;
+            cmd_vel_pub_.publish(twist); //Needs to be redefined?------------------------------
+            rate.sleep();
+          }
+        }
+        // else if ()//Centred and found
+        // {
+
         // }
 
         //Publish image
-        detection_pub_.publish(cv_bridge::CvImage(std_msgs::Header(), "bgr8", publishImage_).toImageMsg());
+        detection_pub_.publish(cv_bridge::CvImage(std_msgs::Header(), "bgr8", publish_image_).toImageMsg());
     }
 }
 
 void BrickSearch::searchedArea(void)
 {
-    trackmap_ = map_image_; //This might constantly get overwritten and not work
-
     //70 degree FOV - 35 on each side
     double robotX = meterX2grid(getPose2d().x); //Make struct?---------------------------------------------------------------
     double robotY = meterY2grid(getPose2d().y); //Make struct?---------------------------------------------------------------
+    cv::Point robot(robotX, robotY);
     double robotTheta = getPose2d().theta;
     double modulusAngle = robotTheta/(M_PI/2);
-    std::vector<float> rangesInFOV;
     for (int i = 0; i < ranges_.size(); i++)
     {
         // if (((i >= (ranges_.size() - 35)) && i <= ranges_.size() - 1) || (i >= 0 && i <= 15)) //Check the -1
         if (((i >= (ranges_.size() - 35)) && i <= ranges_.size()) || (i >= 0 && i <= 35))
         {
-            // rangesInFOV.push_back(ranges_.at(i));
-
             //i is angle relative to centre straight up
-
             int pixelX = 0; //Edit
             int pixelY = 0; //Edit
-            double gradient = (pixelY - robotY) / (pixelX - robotX);
-            double b = robotY - (gradient * robotX);
-            if (robotX < pixelX) 
-            {
-                for (int k = robotX; k < pixelX; k++)
-                {
-                    double y = gradient*k + b;
-                    trackmap_[y][k] = 255; 
-                }
-            }
-            else
-            {
-                for (int k = robotX; k > pixelX; k--)
-                {
-                    double y = gradient*k + b;
-                    trackmap_[y][k] = 255; 
-                }
-            }
+            cv::Point scan(pixelX, pixelY);
+            cv::line (track_map_, robot, scan, cv::Scalar(255,255,255), 1 );
         }
     }
+
+    //Publish image
+    searched_area_pub_.publish(cv_bridge::CvImage(std_msgs::Header(), "bgr8", track_map_).toImageMsg());
+
 
     // cv::imshow("map image", map_image_);
     // cv::waitKey(0);
@@ -492,6 +494,9 @@ void BrickSearch::mainLoop()
 
     // int i = 0;
     // This loop repeats until ROS shuts down, you probably want to put all your code in here
+    
+    track_map_ = map_image_;
+    ROS_INFO("trackmap_ saved");
     while (ros::ok())
     {
         ROS_INFO("mainLoop");

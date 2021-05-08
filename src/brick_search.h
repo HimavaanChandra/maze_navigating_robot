@@ -41,8 +41,14 @@ private:
     tf2::Quaternion quaternion;
     geometry_msgs::PoseStamped goal;
     cv::Mat image_;
-    cv::Mat publishImage_;
-    cv::Mat trackmap_; // Check if used
+    cv::Mat publish_image_;
+    cv::Mat track_map_;
+    cv::Size size;
+    int cx;
+    int cy;
+    const int cutoff = 0.8; //Adjust-----------------------
+    double ratio;
+    bool override;
 
     // // Structures
     // struct robot_pose_2d
@@ -66,10 +72,11 @@ private:
     // Movement goal command publisher
     ros::Publisher move_base_simple_goal_{};
 
-    // Image transport, Publisher and subscriber
+    // Image transport, Publishers and subscriber
     image_transport::ImageTransport it_;
     image_transport::Subscriber image_sub_{};
     image_transport::Publisher detection_pub_;
+    image_transport::Publisher searched_area_pub_;
     
 
     // Lidar Subscriber and data
