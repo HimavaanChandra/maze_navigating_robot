@@ -430,7 +430,7 @@ void BrickSearch::searchedArea(void)
     double robot_x = meterX2grid(getPose2d().x); //Make struct?---------------------------------------------------------------
     double robot_y = meterY2grid(getPose2d().y); //Make struct?---------------------------------------------------------------
     double robot_theta = getPose2d().theta;
-    cv::Point robot(robotX, robotY);
+    cv::Point robot(robot_x, robot_y);
 
     double ray_x;
     double ray_y;
@@ -447,12 +447,12 @@ void BrickSearch::searchedArea(void)
             double map_angle = wrapAngle(robot_theta + (i * M_PI) / 180);
 
             // calculate x position where current lidar ray ends
-            ray_x = ranges_.at(i) * cos(map_angle);
+            ray_x = meterX2grid(ranges_.at(i) * cos(map_angle));
             ray_x = ray_x + robot_x;
 
             // calculate y position where current lidar ray ends
             ray_y = ranges_.at(i) * sin(map_angle);
-            ray_y = ray_y + robot_y;
+            ray_y = meterY2grid(ray_y + robot_y);
 
             cv::Point scan(ray_x, ray_y);
             cv::line(track_map_, robot, scan, cv::Scalar(255, 255, 255), 1);
@@ -575,14 +575,16 @@ void BrickSearch::mainLoop()
         ros::Duration(0.2).sleep();
         // std::cout << "map image: " << map_image_ << std::endl;
 
-        if (lock == false)
-        {
-            cv::imshow("map image", map_image_);
-            // cv::waitKey(0);
-            cv::imwrite("/home/user/catkin_ws/src/maze_navigating_robot/map.jpg", map_image_);
+        // if (lock == false)
+        // {
+        //     cv::imshow("map image", track_map_);
+        //     cv::waitKey(0);
+        //     // cv::imwrite("/home/user/catkin_ws/src/maze_navigating_robot/map.jpg", map_image_);
 
-            cv::destroyWindow("map image");
-        }
+        //     cv::destroyWindow("map image");
+        // }
+
+        searchedArea();
 
         if (getGoalReachedStatus() == 3 || lock == false) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
         {
