@@ -422,8 +422,9 @@ void BrickSearch::mainLoop()
         if (lock == false)
         {
             cv::imshow("map image", map_image_);
-            cv::waitKey(0);
-            // cv::destroyWindow("map image");
+            cv::imwrite("/home/user/catkin_ws/src/maze_navigating_robot/map.jpg", map_image_);
+
+            cv::destroyWindow("map image");
         }
 
         if (getGoalReachedStatus() == 3 || lock == false) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
