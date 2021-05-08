@@ -341,7 +341,6 @@ void BrickSearch::detection(void)
             double frameArea = size.width * size.height;
             //Do ratio comparison then initiate takeover?
             ratio = area / frameArea;
-            cutoff = 0.8; //Adjust if doing override------------------------------------
             std::cout << "Contour Area: " << area << std::endl;    //--------Delete------------------------------------------------
             std::cout << "Frame Area: " << frameArea << std::endl; //--------Delete---------------------------------------------
             std::cout << "Ratio: " << ratio << std::endl;          //--------Delete---------------------------------------------
@@ -356,20 +355,20 @@ void BrickSearch::detection(void)
         if (ratio > cutoff && brick_found_) //Might need to adjust this
         {
             override = true;
-          //Take over control till ratio is certain amount. - This might need to be in higher loop so that values can be recalculated or not
+            //Take over control till ratio is certain amount. - This might need to be in higher loop so that values can be recalculated or not
 
-          //Set linear and angular velocity override
-          geometry_msgs::Twist twist{};
-          
-          ros::Rate rate(10);
-          
-          while (!centred) //Check condition
-          {
-            twist.angular.z = 0;
-            twist.linear.x = 0;
-            cmd_vel_pub_.publish(twist); //Needs to be redefined?------------------------------
-            rate.sleep();
-          }
+            //Set linear and angular velocity override
+            geometry_msgs::Twist twist{};
+
+            ros::Rate rate(10);
+
+            while (!centred) //Check condition
+            {
+                twist.angular.z = 0;
+                twist.linear.x = 0;
+                cmd_vel_pub_.publish(twist); //Needs to be redefined?------------------------------
+                rate.sleep();
+            }
         }
         // else if ()//Centred and found
         // {
@@ -388,7 +387,7 @@ void BrickSearch::searchedArea(void)
     double robot_x = meterX2grid(getPose2d().x); //Make struct?---------------------------------------------------------------
     double robot_y = meterY2grid(getPose2d().y); //Make struct?---------------------------------------------------------------
     double robot_theta = getPose2d().theta;
-    cv::Point robot(robotX, robotY);
+    cv::Point robot(robot_x, robot_y);
 
     double ray_x;
     double ray_y;
@@ -400,26 +399,40 @@ void BrickSearch::searchedArea(void)
         // Using lidar within FOV of camera which is 70 degrees - 35 on each side of robot front
         if (((i >= (ranges_.size() - 35)) && i <= ranges_.size()) || (i >= 0 && i <= 35))
         {
-           
+
             // Calculate angle of current lidar ray
             double map_angle = wrapAngle(robot_theta + (i * M_PI) / 180);
 
             // calculate x position where current lidar ray ends
-            ray_x = ranges_.at(i) * cos(map_angle);
+            ray_x = meterX2grid(ranges_.at(i) * cos(map_angle));
             ray_x = ray_x + robot_x;
 
             // calculate y position where current lidar ray ends
             ray_y = ranges_.at(i) * sin(map_angle);
-            ray_y = ray_y + robot_y;
+            ray_y = meterY2grid(ray_y + robot_y);
 
             cv::Point scan(ray_x, ray_y);
-            cv::line (track_map_, robot, scan, cv::Scalar(255,255,255), 1 );
+            cv::line(track_map_, robot, scan, cv::Scalar(255, 255, 255), 1);
         }
     }
 
     //Publish image
     searched_area_pub_.publish(cv_bridge::CvImage(std_msgs::Header(), "bgr8", track_map_).toImageMsg());
 
+    cv::Size test = track_map_.size();
+    for (int i = 0; i < test.height; i++)
+    {
+        for (int k = 0; k < test.width; k++)
+        {
+            track_map_.at<int>(i, k) = 255; //cv::Scalar(255,255,255)
+        }
+    }
+
+    cv::imshow("map image", track_map_);
+    cv::waitKey(0);
+    // cv::imwrite("/home/user/catkin_ws/src/maze_navigating_robot/map.jpg", map_image_);
+
+    cv::destroyWindow("map image");
 
     // cv::imshow("map image", map_image_);
     // cv::waitKey(0);
@@ -509,7 +522,7 @@ void BrickSearch::mainLoop()
 
     // int i = 0;
     // This loop repeats until ROS shuts down, you probably want to put all your code in here
-    
+
     track_map_ = map_image_;
     ROS_INFO("trackmap_ saved");
     while (ros::ok())
@@ -520,14 +533,16 @@ void BrickSearch::mainLoop()
         ros::Duration(0.2).sleep();
         // std::cout << "map image: " << map_image_ << std::endl;
 
-        if (lock == false)
-        {
-            cv::imshow("map image", map_image_);
-            // cv::waitKey(0);
-            cv::imwrite("/home/user/catkin_ws/src/maze_navigating_robot/map.jpg", map_image_);
+        // if (lock == false)
+        // {
+        //     cv::imshow("map image", track_map_);
+        //     cv::waitKey(0);
+        //     // cv::imwrite("/home/user/catkin_ws/src/maze_navigating_robot/map.jpg", map_image_);
 
-            cv::destroyWindow("map image");
-        }
+        //     cv::destroyWindow("map image");
+        // }
+
+        searchedArea();
 
         if (getGoalReachedStatus() == 3 || lock == false) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
         {
