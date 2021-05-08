@@ -335,10 +335,10 @@ void BrickSearch::detection(void)
             double frameArea = size.width * size.height;
             //Do ratio comparison then initiate takeover?
             double ratio = area / frameArea;
-            int cutoff = 0; //Adjust if doing override---------------------------------
+            int cutoff = 0;                                        //Adjust if doing override---------------------------------
             std::cout << "Contour Area: " << area << std::endl;    //--------Delete------------------------------------------------
             std::cout << "Frame Area: " << frameArea << std::endl; //--------Delete---------------------------------------------
-            std::cout << "Ratio: " << ratio << std::endl; //--------Delete---------------------------------------------
+            std::cout << "Ratio: " << ratio << std::endl;          //--------Delete---------------------------------------------
             brick_found_ = true;
         }
         else
@@ -367,38 +367,51 @@ void BrickSearch::searchedArea(void)
     trackmap_ = map_image_; //This might constantly get overwritten and not work
 
     //70 degree FOV - 35 on each side
-    double robotX = meterX2grid(getPose2d().x); //Make struct?---------------------------------------------------------------
-    double robotY = meterY2grid(getPose2d().y); //Make struct?---------------------------------------------------------------
-    double robotTheta = getPose2d().theta;
-    double modulusAngle = robotTheta/(M_PI/2);
+
+    double robot_x = meterX2grid(getPose2d().x); //Make struct?---------------------------------------------------------------
+    double robot_y = meterY2grid(getPose2d().y); //Make struct?---------------------------------------------------------------
+    double robot_theta = getPose2d().theta;
+
+    double ray_x;
+    double ray_y;
+
     std::vector<float> rangesInFOV;
+
     for (int i = 0; i < ranges_.size(); i++)
     {
-        // if (((i >= (ranges_.size() - 35)) && i <= ranges_.size() - 1) || (i >= 0 && i <= 15)) //Check the -1
+        // Using lidar within FOV of camera which is 70 degrees - 35 on each side of robot front
         if (((i >= (ranges_.size() - 35)) && i <= ranges_.size()) || (i >= 0 && i <= 35))
         {
-            // rangesInFOV.push_back(ranges_.at(i));
 
-            //i is angle relative to centre straight up
+            // Calculate angle of current lidar ray
+            double map_angle = wrapAngle(robot_theta + (i * M_PI) / 180);
+
+            // calculate x position where current lidar ray ends
+            ray_x = ranges_.at(i) * cos(map_angle);
+            ray_x = ray_x + robot_x;
+
+            // calculate y position where current lidar ray ends
+            ray_y = ranges_.at(i) * sin(map_angle);
+            ray_y = ray_y + robot_y;
 
             int pixelX = 0; //Edit
             int pixelY = 0; //Edit
             double gradient = (pixelY - robotY) / (pixelX - robotX);
             double b = robotY - (gradient * robotX);
-            if (robotX < pixelX) 
+            if (robotX < pixelX)
             {
                 for (int k = robotX; k < pixelX; k++)
                 {
-                    double y = gradient*k + b;
-                    trackmap_[y][k] = 255; 
+                    double y = gradient * k + b;
+                    trackmap_[y][k] = 255;
                 }
             }
             else
             {
                 for (int k = robotX; k > pixelX; k--)
                 {
-                    double y = gradient*k + b;
-                    trackmap_[y][k] = 255; 
+                    double y = gradient * k + b;
+                    trackmap_[y][k] = 255;
                 }
             }
         }
