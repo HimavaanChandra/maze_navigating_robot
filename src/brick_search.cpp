@@ -437,18 +437,23 @@ void BrickSearch::searchedArea(void)
 
     std::vector<float> rangesInFOV;
 
+    std::cout << "Ranges: ";//------------------------------------------
     for (int i = 0; i < ranges_.size(); i++)
     {
         // Using lidar within FOV of camera which is 70 degrees - 35 on each side of robot front
         if (((i >= (ranges_.size() - 35)) && i <= ranges_.size()) || (i >= 0 && i <= 35))
         {
-
+            std::cout << ranges_.at(i) << ", ";//---------------------------------------------------
             // Calculate angle of current lidar ray
             double map_angle = wrapAngle(robot_theta + (i * M_PI) / 180);
 
             // calculate x position where current lidar ray ends
-            ray_x = meterX2grid(ranges_.at(i) * cos(map_angle));
-            ray_x = ray_x + robot_x;
+            //old-------------------------------------------------------------------------
+            // ray_x = meterX2grid(ranges_.at(i) * cos(map_angle));
+            // ray_x = ray_x + robot_x;
+
+            ray_x = ranges_.at(i) * cos(map_angle);
+            ray_x = meterX2grid(ray_x + robot_x);
 
             // calculate y position where current lidar ray ends
             ray_y = ranges_.at(i) * sin(map_angle);
@@ -458,27 +463,28 @@ void BrickSearch::searchedArea(void)
             cv::line(track_map_, robot, scan, cv::Scalar(255, 255, 255), 1);
         }
     }
+    std::cout << std::endl;//---------------------------------------------------------
 
+    std::cout << "ray: " << ray_x << "," << ray_y << std::endl;
+    std::cout << "robot: " << robot_x << "," << robot_y << std::endl;
+    // ray: 766,383
+    // robot: 383,383
 
     //Testing
-    cv::Size test = track_map_.size();
-    for (int i = 0; i < test.height; i++)
-    {
-        cv::Point left(0,i);
-        cv::Point right(test.width,i);
-        cv::line(track_map_, left, right, cv::Scalar(255, 255, 255), 1);
-        // for (int k = 0; k < test.x; k++)
-        // {
-        //     track_map_[i][k] = 255; //cv::Scalar(255,255,255)
-        // }
-    }
+    // cv::Size test = track_map_.size();
+    // for (int i = 0; i < (3*test.height/4); i++)
+    // {
+    //     cv::Point left(0,i);
+    //     cv::Point right(test.width,i);
+    //     cv::line(track_map_, left, right, cv::Scalar(255, 255, 255), 1);
+    // }
 
     //Publish image
     searched_area_pub_.publish(cv_bridge::CvImage(std_msgs::Header(), "bgr8", track_map_).toImageMsg());
 
-    // cv::imshow("map image", map_image_);
-    // cv::waitKey(0);
-    // cv::destroyWindow("map image");
+    cv::imshow("track map", track_map_);
+    cv::waitKey(0);
+    cv::destroyWindow("track map");
 
     //Do check for brick
     //If brick check depth image for location
