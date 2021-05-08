@@ -25,7 +25,8 @@ public:
     explicit BrickSearch(ros::NodeHandle &nh);
 
     // Publich methods
-    void mainLoop();
+    void mainLoop(void);
+    // void detection(void); //Move to private?----------
 
 private:
     // Variables
@@ -38,7 +39,8 @@ private:
     bool lock = false;
     tf2::Quaternion quaternion;
     geometry_msgs::PoseStamped goal;
-    cv::Mat image_; // added----------------------------------------------------------------------
+    cv::Mat image_;
+    cv::Mat publishImage_;
 
     // // Structures
     // struct robot_pose_2d
@@ -62,9 +64,11 @@ private:
     // Movement goal command publisher
     ros::Publisher move_base_simple_goal_{};
 
-    // Image transport and subscriber
+    // Image transport, Publisher and subscriber
     image_transport::ImageTransport it_;
     image_transport::Subscriber image_sub_{};
+    image_transport::Publisher detection_pub_;
+    // sensor_msgs::ImagePtr test_; //
 
     // Action client
     actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> move_base_action_client_{"move_base", true};
