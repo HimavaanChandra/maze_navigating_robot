@@ -406,11 +406,11 @@ void BrickSearch::detection(void)
                 double map_angle = wrapAngle(robot_theta + (i * M_PI) / 180);
 
                 // calculate x position where current lidar ray ends
-                int ray_x = ranges_.at(i) * cos(map_angle);
+                int ray_x = ranges_.at(i) * cos(map_angle); //Need to add metre to grid------
                 ray_x = ray_x + robot_x;
 
                 // calculate y position where current lidar ray ends
-                int ray_y = ranges_.at(i) * sin(map_angle);
+                int ray_y = ranges_.at(i) * sin(map_angle); //Need to add metre to grid-----
                 ray_y = ray_y + robot_y;
                 cv::Point brick(ray_x, ray_y);
                 cv::circle(track_map_, brick, 3, CV_RGB(255, 0, 0), 1); //There is gonna be a overriding problem here
@@ -464,11 +464,14 @@ void BrickSearch::searchedArea(void)
         }
     }
     std::cout << std::endl;//---------------------------------------------------------
-
+    cv::Size test = track_map_.size();
     std::cout << "ray: " << ray_x << "," << ray_y << std::endl;
     std::cout << "robot: " << robot_x << "," << robot_y << std::endl;
+    std::cout << "image size: " << test.width << "," << test.height << std::endl;
     // ray: 766,383
     // robot: 383,383
+    // image size: 384,384
+
 
     //Testing
     // cv::Size test = track_map_.size();
