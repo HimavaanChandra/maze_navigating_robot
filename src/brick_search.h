@@ -46,9 +46,12 @@ private:
     cv::Size size;
     int cx;
     int cy;
-    const int cutoff = 0.8; //Adjust-----------------------
+    const double cutoff = 0.6; //Adjust-----------------------
+    const double final = 0.8; //Adjust
     double ratio;
     bool override;
+    constint pixel_tolerance = 3;   //Adjust-------------------
+    bool centred;
 
     // // Structures
     // struct robot_pose_2d

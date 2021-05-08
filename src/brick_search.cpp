@@ -1,7 +1,7 @@
 #include "brick_search.h"
 
 // Constructor
-BrickSearch::BrickSearch(ros::NodeHandle &nh) : it_{nh}, ratio(0), override(false)
+BrickSearch::BrickSearch(ros::NodeHandle &nh) : it_{nh}, ratio(0), override(false), centred(false)
 {
 
     // Wait for "static_map" service to be available
@@ -299,6 +299,7 @@ geometry_msgs::Pose BrickSearch::pose2dToPose(const geometry_msgs::Pose2D &pose_
 
 void BrickSearch::detection(void)
 {
+    ros::Rate rate(10);
     if (!image_.empty())
     {
         publish_image_ = image_;
@@ -341,41 +342,82 @@ void BrickSearch::detection(void)
             double frameArea = size.width * size.height;
             //Do ratio comparison then initiate takeover?
             ratio = area / frameArea;
-            cutoff = 0.8; //Adjust if doing override------------------------------------
             std::cout << "Contour Area: " << area << std::endl;    //--------Delete------------------------------------------------
             std::cout << "Frame Area: " << frameArea << std::endl; //--------Delete---------------------------------------------
             std::cout << "Ratio: " << ratio << std::endl;          //--------Delete---------------------------------------------
-            brick_found_ = true;
+            brick_found_ = true;                                   //Check this might cause error because of tolerance------------------------------
         }
         else
         {
             brick_found_ = false;
         }
-        bool centred = false; //Could create an error here----------------------------------------------------------
-
         if (ratio > cutoff && brick_found_) //Might need to adjust this
         {
             override = true;
-          //Take over control till ratio is certain amount. - This might need to be in higher loop so that values can be recalculated or not
+            //Take over control till ratio is certain amount. - This might need to be in higher loop so that values can be recalculated or not
 
-          //Set linear and angular velocity override
-          geometry_msgs::Twist twist{};
-          
-          ros::Rate rate(10);
-          
-          while (!centred) //Check condition
-          {
-            twist.angular.z = 0;
-            twist.linear.x = 0;
-            cmd_vel_pub_.publish(twist); //Needs to be redefined?------------------------------
-            rate.sleep();
-          }
+            //Set linear and angular velocity override
+            geometry_msgs::Twist twist{};
+
+            if (!centred && ratio < final) //Check condition //This needs to override other commands
+            {
+                if (cx >= (size.width / 2 - pixel_tolerance) && cx <= (size.width / 2 + pixel_tolerance))
+                {
+                    centred = true;
+                }
+                else if (cx > size.width / 2)
+                {
+                    twist.angular.z = -0.5; //Tune value
+                    twist.linear.x = 0;
+                    cmd_vel_pub_.publish(twist);
+                }
+                else if (cx < size.width / 2)
+                {
+                    twist.angular.z = 0.5; //Tune value
+                    twist.linear.x = 0;
+                    cmd_vel_pub_.publish(twist); //Needs to be redefined?------------------------------
+                }
+            }
+            else if (centred && ratio < final) //Centred and found// need to check ratio too
+            {
+                twist.angular.z = 0;
+                twist.linear.x = 0.1;
+                cmd_vel_pub_.publish(twist);
+            }
+            else if (centred && ratio >= final)
+            {
+                twist.angular.z = 0;
+                twist.linear.x = 0;
+                cmd_vel_pub_.publish(twist);
+
+                //Check scan straight ahead
+                float scan_ahead = ranges_.at(0);
+                int i = 0;
+                while (scan_ahead <= 0)
+                {
+                    i++;
+                    scan_ahead = ranges.at(i);
+                }
+                //Get robot x and y
+                double robot_x = meterX2grid(getPose2d().x); //Make struct?---------------------------------------------------------------
+                double robot_y = meterY2grid(getPose2d().y); //Make struct?---------------------------------------------------------------
+                double robot_theta = getPose2d().theta;      //Make struct?---------------------------------------------------------------
+                // Calculate angle of current lidar ray
+                double map_angle = wrapAngle(robot_theta + (i * M_PI) / 180);
+
+                // calculate x position where current lidar ray ends
+                ray_x = ranges_.at(i) * cos(map_angle);
+                ray_x = ray_x + robot_x;
+
+                // calculate y position where current lidar ray ends
+                ray_y = ranges_.at(i) * sin(map_angle);
+                ray_y = ray_y + robot_y;
+                cv::Point brick(ray_x, ray_y);
+                cv::circle(track_image_, pt, 3, CV_RGB(255, 0, 0), 1); //There is gonna be a overriding problem here
+                //Need to publish image here, could fix by publishing to original map_image_
+            }
         }
-        // else if ()//Centred and found
-        // {
-
-        // }
-
+        rate.sleep();
         //Publish image
         detection_pub_.publish(cv_bridge::CvImage(std_msgs::Header(), "bgr8", publish_image_).toImageMsg());
     }
@@ -400,7 +442,7 @@ void BrickSearch::searchedArea(void)
         // Using lidar within FOV of camera which is 70 degrees - 35 on each side of robot front
         if (((i >= (ranges_.size() - 35)) && i <= ranges_.size()) || (i >= 0 && i <= 35))
         {
-           
+
             // Calculate angle of current lidar ray
             double map_angle = wrapAngle(robot_theta + (i * M_PI) / 180);
 
@@ -413,13 +455,26 @@ void BrickSearch::searchedArea(void)
             ray_y = ray_y + robot_y;
 
             cv::Point scan(ray_x, ray_y);
-            cv::line (track_map_, robot, scan, cv::Scalar(255,255,255), 1 );
+            cv::line(track_map_, robot, scan, cv::Scalar(255, 255, 255), 1);
         }
+    }
+
+
+    //Testing
+    cv::Size test = track_map_.size();
+    for (int i = 0; i < test.height; i++)
+    {
+        cv::Point left(0,i);
+        cv::Point right(test.width,i);
+        cv::line(track_map_, left, right, cv::Scalar(255, 255, 255), 1);
+        // for (int k = 0; k < test.x; k++)
+        // {
+        //     track_map_[i][k] = 255; //cv::Scalar(255,255,255)
+        // }
     }
 
     //Publish image
     searched_area_pub_.publish(cv_bridge::CvImage(std_msgs::Header(), "bgr8", track_map_).toImageMsg());
-
 
     // cv::imshow("map image", map_image_);
     // cv::waitKey(0);
@@ -509,7 +564,7 @@ void BrickSearch::mainLoop()
 
     // int i = 0;
     // This loop repeats until ROS shuts down, you probably want to put all your code in here
-    
+
     track_map_ = map_image_;
     ROS_INFO("trackmap_ saved");
     while (ros::ok())
