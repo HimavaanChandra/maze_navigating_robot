@@ -478,14 +478,14 @@ cv::Point scan(0, 0);
             ray_y = meterX2pixel(ray_y + robot_y);
 
             cv::Point scan(ray_x, ray_y);
+            cv::circle(track_map_, scan, 3, CV_RGB(0, 255, 0), 1); //green
             cv::line(track_map_, robot, scan, cv::Scalar(255, 255, 255), 1);
+            std::cout << "ray: " << ray_x << "," << ray_y << std::endl;
         }
     }
     std::cout << std::endl;                                          //---------------------------------------------------------
     cv::circle(track_map_, robot, 3, CV_RGB(255, 0, 0), 1);          //Red
-    cv::circle(track_map_, scan, 3, CV_RGB(0, 255, 0), 1); //green
     cv::Size test = track_map_.size();
-    std::cout << "ray: " << ray_x << "," << ray_y << std::endl;
     std::cout << "robot: " << robot_x << "," << robot_y << std::endl;
     std::cout << "image size: " << test.width << "," << test.height << std::endl;
     // ray: 766,766
