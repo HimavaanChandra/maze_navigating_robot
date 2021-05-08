@@ -448,16 +448,12 @@ void BrickSearch::searchedArea(void)
             double map_angle = wrapAngle(robot_theta + (i * M_PI) / 180);
 
             // calculate x position where current lidar ray ends
-            //old-------------------------------------------------------------------------
-            // ray_x = meterX2grid(ranges_.at(i) * cos(map_angle));
-            // ray_x = ray_x + robot_x;
-
-            ray_x = ranges_.at(i) * cos(map_angle);
-            ray_x = meterX2grid(ray_x + robot_x);
+            ray_x = meterX2grid(ranges_.at(i) * cos(map_angle));
+            ray_x = ray_x + robot_x;
 
             // calculate y position where current lidar ray ends
-            ray_y = ranges_.at(i) * sin(map_angle);
-            ray_y = meterY2grid(ray_y + robot_y);
+            ray_y = meterY2grid(ranges_.at(i) * sin(map_angle));
+            ray_y = ray_y + robot_y;
 
             cv::Point scan(ray_x, ray_y);
             cv::line(track_map_, robot, scan, cv::Scalar(255, 255, 255), 1);
@@ -468,7 +464,7 @@ void BrickSearch::searchedArea(void)
     std::cout << "ray: " << ray_x << "," << ray_y << std::endl;
     std::cout << "robot: " << robot_x << "," << robot_y << std::endl;
     std::cout << "image size: " << test.width << "," << test.height << std::endl;
-    // ray: 766,383
+    // ray: 766,766
     // robot: 383,383
     // image size: 384,384
 
