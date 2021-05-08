@@ -70,6 +70,7 @@ private:
     // Subscribe to the AMCL pose to get covariance
     ros::Subscriber amcl_pose_sub_{};
     ros::Subscriber move_base_status_sub_{};
+    ros::Subscriber odometry_sub_;
 
     // Velocity command publisher
     ros::Publisher cmd_vel_pub_{};
@@ -80,6 +81,7 @@ private:
     // Image transport, Publishers and subscriber
     image_transport::ImageTransport it_;
     image_transport::Subscriber image_sub_{};
+
     image_transport::Publisher detection_pub_;
     image_transport::Publisher searched_area_pub_;
 

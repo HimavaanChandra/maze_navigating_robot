@@ -45,6 +45,9 @@ BrickSearch::BrickSearch(ros::NodeHandle &nh) : it_{nh}, ratio(0), override(fals
     // Subscribe to lidar
     laser_sub_ = nh.subscribe("/scan", 10, &BrickSearch::laserCallback, this);
 
+    // Subscribe to odom
+    odometry_sub_ = nh.subscribe("/odom", 10, &BrickSearch::odomCallback, this);
+
     // Publish the processed camera image
     detection_pub_ = it_.advertise("/detection_image", 1);
 
@@ -189,10 +192,10 @@ int BrickSearch::meterX2grid(double x)
 int BrickSearch::meterY2pixel(double y)
 {
 
-    int gy = round((y+image_size_meters / 2) / 0.05);
+    int gy = round((image_size_meters / 2 - y) / 0.05);
 
-    if (gy > image_size_pixel - 1)
-        gy = image_size_pixel - 1;
+    if (gy > (image_size_meters / 0.05) - 1)
+        gy = (image_size_meters / 0.05) - 1;
     if (gy < 0)
         gy = 0;
     return gy;
@@ -200,9 +203,9 @@ int BrickSearch::meterY2pixel(double y)
 
 int BrickSearch::meterX2pixel(double x)
 {
-    int gx = round((x+image_size_meters / 2-x) / 0.05);
-    if (gx > image_size_pixel - 1)
-        gx = image_size_pixel - 1;
+    int gx = round((image_size_meters / 2 - x) / 0.05);
+    if (gx > (image_size_meters / 0.05) - 1)
+        gx = (image_size_meters / 0.05) - 1;
     if (gx < 0)
         gx = 0;
     return gx;
@@ -422,9 +425,9 @@ void BrickSearch::detection(void)
                     scan_ahead = ranges_.at(i);
                 }
                 //Get robot x and y
-                double robot_x = getPose2d().x; //Make struct?---------------------------------------------------------------
-                double robot_y = getPose2d().y; //Make struct?---------------------------------------------------------------
-                double robot_theta = getPose2d().theta;      //Make struct?---------------------------------------------------------------
+                double robot_x = getPose2d().x;         //Make struct?---------------------------------------------------------------
+                double robot_y = getPose2d().y;         //Make struct?---------------------------------------------------------------
+                double robot_theta = getPose2d().theta; //Make struct?---------------------------------------------------------------
                 // Calculate angle of current lidar ray
                 double map_angle = wrapAngle(robot_theta + (i * M_PI) / 180);
 
