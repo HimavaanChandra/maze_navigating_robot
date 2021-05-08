@@ -42,8 +42,8 @@ BrickSearch::BrickSearch(ros::NodeHandle &nh) : it_{nh}
     // Subscribe to the goal status
     move_base_status_sub_ = nh.subscribe("/move_base/status", 1, &BrickSearch::moveBaseStatusCallback, this);
 
-    // Subscribe to lidat
-    laser_sub_ = nh_.subscribe("/scan", 10, &BrickSearch::laserCallback, this);
+    // Subscribe to lidar
+    laser_sub_ = nh.subscribe("/scan", 10, &BrickSearch::laserCallback, this);
 
     // Advertise "cmd_vel" publisher to control TurtleBot manually
     cmd_vel_pub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel", 1, false);
@@ -119,7 +119,7 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr &image_msg_ptr)
     ROS_INFO_STREAM("brick_found_: " << brick_found_);
 }
 
-void TurtleFollow::laserCallback(const sensor_msgs::LaserScanConstPtr &msg)
+void BrickSearch::laserCallback(const sensor_msgs::LaserScanConstPtr &msg)
 {
     ranges_ = msg->ranges;
 }
@@ -364,11 +364,11 @@ void BrickSearch::detection(void)
 
 void BrickSearch::searchedArea(void)
 {
-    trackmap_ = map_image //This might constantly get overwritten and not work
+    trackmap_ = map_image_; //This might constantly get overwritten and not work
 
     //70 degree FOV - 35 on each side
-    double robotX = meterX2grid(getPose2d().x)); //Make struct?---------------------------------------------------------------
-    double robotY = meterY2grid(getPose2d().y)); //Make struct?---------------------------------------------------------------
+    double robotX = meterX2grid(getPose2d().x); //Make struct?---------------------------------------------------------------
+    double robotY = meterY2grid(getPose2d().y); //Make struct?---------------------------------------------------------------
     double robotTheta = getPose2d().theta;
     double modulusAngle = robotTheta/(M_PI/2);
     std::vector<float> rangesInFOV;
@@ -380,7 +380,6 @@ void BrickSearch::searchedArea(void)
             // rangesInFOV.push_back(ranges_.at(i));
 
             //i is angle relative to centre straight up
-
 
             int pixelX = 0; //Edit
             int pixelY = 0; //Edit
