@@ -344,7 +344,7 @@ void BrickSearch::detection(void)
             cutoff = 0.8; //Adjust if doing override------------------------------------
             std::cout << "Contour Area: " << area << std::endl;    //--------Delete------------------------------------------------
             std::cout << "Frame Area: " << frameArea << std::endl; //--------Delete---------------------------------------------
-            std::cout << "Ratio: " << ratio << std::endl; //--------Delete---------------------------------------------
+            std::cout << "Ratio: " << ratio << std::endl;          //--------Delete---------------------------------------------
             brick_found_ = true;
         }
         else
@@ -384,20 +384,35 @@ void BrickSearch::detection(void)
 void BrickSearch::searchedArea(void)
 {
     //70 degree FOV - 35 on each side
-    double robotX = meterX2grid(getPose2d().x); //Make struct?---------------------------------------------------------------
-    double robotY = meterY2grid(getPose2d().y); //Make struct?---------------------------------------------------------------
+
+    double robot_x = meterX2grid(getPose2d().x); //Make struct?---------------------------------------------------------------
+    double robot_y = meterY2grid(getPose2d().y); //Make struct?---------------------------------------------------------------
+    double robot_theta = getPose2d().theta;
     cv::Point robot(robotX, robotY);
-    double robotTheta = getPose2d().theta;
-    double modulusAngle = robotTheta/(M_PI/2);
+
+    double ray_x;
+    double ray_y;
+
+    std::vector<float> rangesInFOV;
+
     for (int i = 0; i < ranges_.size(); i++)
     {
-        // if (((i >= (ranges_.size() - 35)) && i <= ranges_.size() - 1) || (i >= 0 && i <= 15)) //Check the -1
+        // Using lidar within FOV of camera which is 70 degrees - 35 on each side of robot front
         if (((i >= (ranges_.size() - 35)) && i <= ranges_.size()) || (i >= 0 && i <= 35))
         {
-            //i is angle relative to centre straight up
-            int pixelX = 0; //Edit
-            int pixelY = 0; //Edit
-            cv::Point scan(pixelX, pixelY);
+           
+            // Calculate angle of current lidar ray
+            double map_angle = wrapAngle(robot_theta + (i * M_PI) / 180);
+
+            // calculate x position where current lidar ray ends
+            ray_x = ranges_.at(i) * cos(map_angle);
+            ray_x = ray_x + robot_x;
+
+            // calculate y position where current lidar ray ends
+            ray_y = ranges_.at(i) * sin(map_angle);
+            ray_y = ray_y + robot_y;
+
+            cv::Point scan(ray_x, ray_y);
             cv::line (track_map_, robot, scan, cv::Scalar(255,255,255), 1 );
         }
     }
