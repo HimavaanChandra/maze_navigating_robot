@@ -188,9 +188,11 @@ int BrickSearch::meterX2grid(double x)
 
 int BrickSearch::meterY2pixel(double y)
 {
-    int gy = round((20 / 2 - y) / map_.info.resolution);
-    if (gy > map_.info.height - 1)
-        gy = map_.info.height - 1;
+
+    int gy = round((y+image_size_meters / 2) / 0.05);
+
+    if (gy > image_size_pixel - 1)
+        gy = image_size_pixel - 1;
     if (gy < 0)
         gy = 0;
     return gy;
@@ -198,9 +200,9 @@ int BrickSearch::meterY2pixel(double y)
 
 int BrickSearch::meterX2pixel(double x)
 {
-    int gx = round((x + 20 / 2) / map_.info.resolution);
-    if (gx > map_.info.width - 1)
-        gx = map_.info.width - 1;
+    int gx = round((x+image_size_meters / 2-x) / 0.05);
+    if (gx > image_size_pixel - 1)
+        gx = image_size_pixel - 1;
     if (gx < 0)
         gx = 0;
     return gx;
@@ -420,19 +422,19 @@ void BrickSearch::detection(void)
                     scan_ahead = ranges_.at(i);
                 }
                 //Get robot x and y
-                double robot_x = meterX2grid(getPose2d().x); //Make struct?---------------------------------------------------------------
-                double robot_y = meterY2grid(getPose2d().y); //Make struct?---------------------------------------------------------------
+                double robot_x = getPose2d().x; //Make struct?---------------------------------------------------------------
+                double robot_y = getPose2d().y; //Make struct?---------------------------------------------------------------
                 double robot_theta = getPose2d().theta;      //Make struct?---------------------------------------------------------------
                 // Calculate angle of current lidar ray
                 double map_angle = wrapAngle(robot_theta + (i * M_PI) / 180);
 
                 // calculate x position where current lidar ray ends
                 int ray_x = ranges_.at(i) * cos(map_angle); //Need to add metre to grid------
-                ray_x = ray_x + robot_x;
+                ray_x = meterX2pixel(ray_x + robot_x);
 
                 // calculate y position where current lidar ray ends
                 int ray_y = ranges_.at(i) * sin(map_angle); //Need to add metre to grid-----
-                ray_y = ray_y + robot_y;
+                ray_y = meterY2pixel(ray_y + robot_y);
                 cv::Point brick(ray_x, ray_y);
                 cv::circle(track_map_, brick, 3, CV_RGB(255, 0, 0), 1); //There is gonna be a overriding problem here
                 //Need to publish image here, could fix by publishing to original map_image_
@@ -457,7 +459,14 @@ void BrickSearch::searchedArea(void)
     double ray_y;
 
     std::vector<float> rangesInFOV;
-
+    // Testing
+    cv::Size test = track_map_.size();
+    for (int i = 0; i < (test.height); i++)
+    {
+        cv::Point left(0, i);
+        cv::Point right(test.width, i);
+        cv::line(track_map_, left, right, cv::Scalar(0, 0, 0), 1);
+    }
     std::cout << "Ranges: "; //------------------------------------------
     for (int i = 0; i < ranges_.size(); i++)
     {
@@ -470,11 +479,11 @@ void BrickSearch::searchedArea(void)
             // calculate x position where current lidar ray ends
             ray_x = ranges_.at(i) * cos(map_angle);
             ray_x = meterX2pixel(ray_x + robot_x);
-            std::cout << "ray_x: " << ray_x << std::endl;
+            // std::cout << "ray_x: " << ray_x << std::endl;
 
             // calculate y position where current lidar ray ends
             ray_y = ranges_.at(i) * sin(map_angle);
-            ray_y = meterX2pixel(ray_y + robot_y);
+            ray_y = meterY2pixel(ray_y + robot_y);
 
             cv::Point scan(ray_x, ray_y);
             cv::circle(track_map_, scan, 3, CV_RGB(0, 255, 0), 1); //green
@@ -482,23 +491,14 @@ void BrickSearch::searchedArea(void)
             std::cout << "ray: " << ray_x << "," << ray_y << std::endl;
         }
     }
-    std::cout << std::endl;                                          //---------------------------------------------------------
-    cv::circle(track_map_, robot, 3, CV_RGB(255, 0, 0), 1);          //Red
-    cv::Size test = track_map_.size();
-    std::cout << "robot: " << robot_x << "," << robot_y << std::endl;
-    std::cout << "image size: " << test.width << "," << test.height << std::endl;
+    std::cout << std::endl;                                 //---------------------------------------------------------
+    cv::circle(track_map_, robot, 3, CV_RGB(255, 0, 0), 1); //Red
+    cv::Size bob = track_map_.size();
+    std::cout << "robot: " << meterX2pixel(robot_x) << "," << meterY2pixel(robot_y) << std::endl;
+    std::cout << "image size: " << bob.width << "," << bob.height << std::endl;
     // ray: 766,766
     // robot: 383,383
     // image size: 384,384
-
-    //Testing
-    // cv::Size test = track_map_.size();
-    // for (int i = 0; i < (3*test.height/4); i++)
-    // {
-    //     cv::Point left(0,i);
-    //     cv::Point right(test.width,i);
-    //     cv::line(track_map_, left, right, cv::Scalar(255, 255, 255), 1);
-    // }
 
     //Publish image
     searched_area_pub_.publish(cv_bridge::CvImage(std_msgs::Header(), "bgr8", track_map_).toImageMsg());

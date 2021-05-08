@@ -47,12 +47,13 @@ private:
     int cx;
     int cy;
     const double cutoff = 0.6; //Adjust-----------------------
-    const double final = 0.8; //Adjust
+    const double final = 0.8;  //Adjust
     double ratio;
     bool override;
-    const int pixel_tolerance = 3;   //Adjust-------------------
+    const int pixel_tolerance = 3; //Adjust-------------------
     bool centred;
-    const int image_size = 384;
+    const int image_size_meters = 20;
+    const int image_size_pixel = 384;
 
     // // Structures
     // struct robot_pose_2d
@@ -81,7 +82,6 @@ private:
     image_transport::Subscriber image_sub_{};
     image_transport::Publisher detection_pub_;
     image_transport::Publisher searched_area_pub_;
-    
 
     // Lidar Subscriber and data
     ros::Subscriber laser_sub_;
