@@ -396,7 +396,7 @@ void BrickSearch::detection(void)
                 while (scan_ahead <= 0)
                 {
                     i++;
-                    scan_ahead = ranges.at(i);
+                    scan_ahead = ranges_.at(i);
                 }
                 //Get robot x and y
                 double robot_x = meterX2grid(getPose2d().x); //Make struct?---------------------------------------------------------------
@@ -406,14 +406,14 @@ void BrickSearch::detection(void)
                 double map_angle = wrapAngle(robot_theta + (i * M_PI) / 180);
 
                 // calculate x position where current lidar ray ends
-                ray_x = ranges_.at(i) * cos(map_angle);
+                int ray_x = ranges_.at(i) * cos(map_angle);
                 ray_x = ray_x + robot_x;
 
                 // calculate y position where current lidar ray ends
-                ray_y = ranges_.at(i) * sin(map_angle);
+                int ray_y = ranges_.at(i) * sin(map_angle);
                 ray_y = ray_y + robot_y;
                 cv::Point brick(ray_x, ray_y);
-                cv::circle(track_image_, pt, 3, CV_RGB(255, 0, 0), 1); //There is gonna be a overriding problem here
+                cv::circle(track_map_, brick, 3, CV_RGB(255, 0, 0), 1); //There is gonna be a overriding problem here
                 //Need to publish image here, could fix by publishing to original map_image_
             }
         }

@@ -50,7 +50,7 @@ private:
     const double final = 0.8; //Adjust
     double ratio;
     bool override;
-    constint pixel_tolerance = 3;   //Adjust-------------------
+    const int pixel_tolerance = 3;   //Adjust-------------------
     bool centred;
 
     // // Structures
