@@ -18,6 +18,7 @@
 #include <actionlib/client/simple_action_client.h>
 #include <move_base_msgs/MoveBaseAction.h>
 #include <sensor_msgs/LaserScan.h>
+#include <nav_msgs/Odometry.h>
 
 class BrickSearch
 {
@@ -54,6 +55,7 @@ private:
     bool centred;
     const int image_size_meters = 20;
     const int image_size_pixel = 384;
+    geometry_msgs::Pose robot_pose;
 
     // // Structures
     // struct robot_pose_2d
@@ -97,6 +99,7 @@ private:
     void imageCallback(const sensor_msgs::ImageConstPtr &image_msg_ptr);
     void moveBaseStatusCallback(const actionlib_msgs::GoalStatusArray &moveBaseStatus_msg_ptr);
     void laserCallback(const sensor_msgs::LaserScanConstPtr &msg);
+    void odomCallback(const nav_msgs::OdometryConstPtr &msg);
 
     int getGoalReachedStatus(void);
     void setGoalReachedStatus(int status);

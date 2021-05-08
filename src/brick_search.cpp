@@ -133,13 +133,9 @@ void BrickSearch::laserCallback(const sensor_msgs::LaserScanConstPtr &msg)
     ranges_ = msg->ranges;
 }
 
-void BrickSearch::odomCallback(const nav_msgs::OdometryConstPtr &msg)
+void BrickSearch::odomCallback(const nav_msgs::OdometryConstPtr &msg) // ---------------------------------------------------------------------------------------------------------------------
 {
-  geometry_msgs::Pose pose = msg->pose.pose;
-  tRobotx_ = pose.position.x;
-  tRoboty_ = pose.position.y;
-  //Check if when robot_.angle_ is empty/initialised, the program crashes?-------------------------------
-  tRobottheta_ = tf::getYaw(pose.orientation);
+    robot_pose = msg->pose.pose;
 }
 
 void BrickSearch::moveBaseStatusCallback(const actionlib_msgs::GoalStatusArray &moveBaseStatus_msg_ptr)
@@ -434,8 +430,8 @@ void BrickSearch::detection(void)
                     scan_ahead = ranges_.at(i);
                 }
                 //Get robot x and y
-                double robot_x = getPose2d().x;         //Make struct?---------------------------------------------------------------
-                double robot_y = getPose2d().y;         //Make struct?---------------------------------------------------------------
+                double robot_x = getPose2d().x+10;         //Make struct?---------------------------------------------------------------
+                double robot_y = getPose2d().y+10;         //Make struct?---------------------------------------------------------------
                 double robot_theta = getPose2d().theta; //Make struct?---------------------------------------------------------------
                 // Calculate angle of current lidar ray
                 double map_angle = wrapAngle(robot_theta + (i * M_PI) / 180);
@@ -462,8 +458,8 @@ void BrickSearch::searchedArea(void)
 {
     //70 degree FOV - 35 on each side
 
-    double robot_x = getPose2d().x; //Make struct?---------------------------------------------------------------
-    double robot_y = getPose2d().y; //Make struct?---------------------------------------------------------------
+    double robot_x = getPose2d().x+10; //Make struct?---------------------------------------------------------------
+    double robot_y = getPose2d().y+10; //Make struct?---------------------------------------------------------------
     double robot_theta = getPose2d().theta;
     cv::Point robot(robot_x, robot_y);
 
@@ -499,6 +495,8 @@ void BrickSearch::searchedArea(void)
 
             cv::Point scan(ray_x, ray_y);
             cv::circle(track_map_, scan, 3, CV_RGB(0, 255, 0), 1); //green
+            robot.x = 100;
+            robot.y = 100; 
             cv::line(track_map_, robot, scan, cv::Scalar(255, 255, 255), 1);
             std::cout << "ray: " << ray_x << "," << ray_y << std::endl;
         }
