@@ -52,6 +52,7 @@ private:
     bool override;
     const int pixel_tolerance = 3;   //Adjust-------------------
     bool centred;
+    const int image_size = 384;
 
     // // Structures
     // struct robot_pose_2d
@@ -110,4 +111,6 @@ private:
     int meterX2grid(double X);
     double grid2meterX(int x);
     double grid2meterY(int y);
+    int meterY2pixel(double y);
+    int meterX2pixel(double X);
 };

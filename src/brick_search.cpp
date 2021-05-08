@@ -177,7 +177,28 @@ int BrickSearch::meterY2grid(double y)
 
 int BrickSearch::meterX2grid(double x)
 {
+    std::cout << "resolution" << map_.info.resolution << std::endl;
     int gx = round((x + map_.info.width / 2) / map_.info.resolution);
+    if (gx > map_.info.width - 1)
+        gx = map_.info.width - 1;
+    if (gx < 0)
+        gx = 0;
+    return gx;
+}
+
+int BrickSearch::meterY2pixel(double y)
+{
+    int gy = round((5 / 2 - y) / (1 / image_size));
+    if (gy > map_.info.height - 1)
+        gy = map_.info.height - 1;
+    if (gy < 0)
+        gy = 0;
+    return gy;
+}
+
+int BrickSearch::meterX2pixel(double x)
+{
+    int gx = round((x + 5 / 2) / (1 / image_size));
     if (gx > map_.info.width - 1)
         gx = map_.info.width - 1;
     if (gx < 0)
@@ -427,8 +448,8 @@ void BrickSearch::searchedArea(void)
 {
     //70 degree FOV - 35 on each side
 
-    double robot_x = meterX2grid(getPose2d().x); //Make struct?---------------------------------------------------------------
-    double robot_y = meterY2grid(getPose2d().y); //Make struct?---------------------------------------------------------------
+    double robot_x = getPose2d().x; //Make struct?---------------------------------------------------------------
+    double robot_y = getPose2d().y; //Make struct?---------------------------------------------------------------
     double robot_theta = getPose2d().theta;
     cv::Point robot(robot_x, robot_y);
 
@@ -436,30 +457,33 @@ void BrickSearch::searchedArea(void)
     double ray_y;
 
     std::vector<float> rangesInFOV;
+cv::Point scan(0, 0);
 
-    std::cout << "Ranges: ";//------------------------------------------
+    std::cout << "Ranges: "; //------------------------------------------
     for (int i = 0; i < ranges_.size(); i++)
     {
         // Using lidar within FOV of camera which is 70 degrees - 35 on each side of robot front
         if (((i >= (ranges_.size() - 35)) && i <= ranges_.size()) || (i >= 0 && i <= 35))
         {
-            std::cout << ranges_.at(i) << ", ";//---------------------------------------------------
+            std::cout << ranges_.at(i) << ", "; //---------------------------------------------------
             // Calculate angle of current lidar ray
             double map_angle = wrapAngle(robot_theta + (i * M_PI) / 180);
             // calculate x position where current lidar ray ends
-            ray_x = meterX2grid(ranges_.at(i) * cos(map_angle));
-            ray_x = ray_x + robot_x;
-std::cout<<"ray_x: "<<ray_x<<std::endl;
+            ray_x = ranges_.at(i) * cos(map_angle);
+            ray_x = meterX2pixel(ray_x + robot_x);
+            std::cout << "ray_x: " << ray_x << std::endl;
 
             // calculate y position where current lidar ray ends
-            ray_y = meterY2grid(ranges_.at(i) * sin(map_angle));
-            ray_y = ray_y + robot_y;
+            ray_y = ranges_.at(i) * sin(map_angle);
+            ray_y = meterX2pixel(ray_y + robot_y);
 
             cv::Point scan(ray_x, ray_y);
             cv::line(track_map_, robot, scan, cv::Scalar(255, 255, 255), 1);
         }
     }
-    std::cout << std::endl;//---------------------------------------------------------
+    std::cout << std::endl;                                          //---------------------------------------------------------
+    cv::circle(track_map_, robot, 3, CV_RGB(255, 0, 0), 1);          //Red
+    cv::circle(track_map_, scan, 3, CV_RGB(0, 255, 0), 1); //green
     cv::Size test = track_map_.size();
     std::cout << "ray: " << ray_x << "," << ray_y << std::endl;
     std::cout << "robot: " << robot_x << "," << robot_y << std::endl;
@@ -467,7 +491,6 @@ std::cout<<"ray_x: "<<ray_x<<std::endl;
     // ray: 766,766
     // robot: 383,383
     // image size: 384,384
-
 
     //Testing
     // cv::Size test = track_map_.size();
