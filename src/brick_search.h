@@ -55,6 +55,7 @@ private:
     bool centred;
     const int image_size_meters = 20;
     const int image_size_pixel = 384;
+    const double meters_to_pixel_conversion = 0.05;
     geometry_msgs::Pose robot_pose;
 
     // // Structures
@@ -113,9 +114,9 @@ private:
     void searchedArea(void);
 
     int meterY2grid(double y);
-    int meterX2grid(double X);
+    int meterX2grid(double x);
     double grid2meterX(int x);
     double grid2meterY(int y);
-    int meterY2pixel(double y);
-    int meterX2pixel(double X);
+    double meterY2pixel(double y);
+    double meterX2pixel(double x);
 };
