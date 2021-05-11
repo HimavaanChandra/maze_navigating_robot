@@ -1,7 +1,7 @@
 #include "brick_search.h"
 
 // Constructor
-BrickSearch::BrickSearch(ros::NodeHandle &nh) : it_{nh}, ratio(0), override(false), centred(false)
+BrickSearch::BrickSearch(ros::NodeHandle &nh) : it_{nh}, ratio(0), override_(false), centred_(false), finished_(false)
 {
 
     // Wait for "static_map" service to be available
@@ -102,21 +102,21 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr &image_msg_ptr)
     // Use this method to identify when the brick is visible
 
     // The camera publishes at 30 fps, it's probably a good idea to analyse images at a lower rate than that
-    if (image_msg_count_ < 15)
-    {
-        image_msg_count_++;
-        return;
-    }
-    else
-    {
-        image_msg_count_ = 0;
-    }
+    // if (image_msg_count_ < 15) //Delete-----------------------------------------
+    // {
+    //     image_msg_count_++;
+    //     return;
+    // }
+    // else
+    // {
+    //     image_msg_count_ = 0;
+    // }
 
     // Copy the image message to a cv_bridge image pointer
     cv_bridge::CvImagePtr image_ptr = cv_bridge::toCvCopy(image_msg_ptr);
 
     // This is the OpenCV image
-    cv::Mat &image = image_ptr->image;
+    image_ = image_ptr->image;
 
     // You can set "brick_found_" to true to signal to "mainLoop" that you have found a brick
     // You may want to communicate more information
@@ -234,13 +234,13 @@ std::vector<double> BrickSearch::exploration(void)
 
     std::vector<std::vector<int>> grid_cost;
 
-    grid_cost.resize(map_.info.width);
-    for (int i = 0; i < map_.info.width; ++i)
+    grid_cost.resize(image_size_pixel);
+    for (int i = 0; i < image_size_pixel; ++i)
     {
-        grid_cost.at(i).resize(map_.info.height);
+        grid_cost.at(i).resize(image_size_pixel);
     }
 
-    std::vector<int> min_cost_grid = {0, 0};
+    std::vector<int> min_cost_grid = {385, 385};
     std::vector<double> min_cost_waypoint = {0, 0};
 
     // calculate heuristic of all grids from current robot position
@@ -248,28 +248,38 @@ std::vector<double> BrickSearch::exploration(void)
               << "Initialising heuristic cost grid" << std::endl;
 
     // Looping through each node/grid in the gripmap_
-    for (int i = 0; i < map_.info.height; i++)
+    std::cout << "map: ";
+    for (int i = 0; i < image_size_pixel; i++)
     {
-        for (int j = 0; j < map_.info.width; j++)
+        for (int j = 0; j < image_size_pixel; j++)
         {
-            // Change in x distance between the current node/grid and the goal_node position
-            int x = std::abs(i - meterX2grid(getPose2d().x));
-
-            // Change in x distance between the current node/grid and the goal_node position
-            int y = std::abs(j - meterY2grid(getPose2d().y));
-
-            // Heuristic for each grid/node equals combined x and y distance, which is equivelant to the number of moves to reach the goal node
-            grid_cost.at(i).at(j) = x + y;
-
-            if (grid_cost.at(i).at(j) < grid_cost.at(min_cost_grid.at(0)).at(min_cost_grid.at(1)) && (map_image_.at<int>(i, j) == 0))
+            std::cout << track_map_.at<int>(i, j) << ",";
+            if ((track_map_.at<int>(i, j) != -1 && track_map_.at<int>(i, j) != 0))
             {
-                min_cost_grid = {i, j};
+                // Change in x distance between the current node/grid and the goal_node position
+                int delta_x = i - (((getPose2d().x) + (image_size_meters / 2)) / meters_to_pixel_conversion);
+
+                // Change in x distance between the current node/grid and the goal_node position
+                int delta_y = j - (((getPose2d().y) + (image_size_meters / 2)) / meters_to_pixel_conversion); //Might need to remove the negative if not working
+
+                // Heuristic for each grid/node equals combined x and y distance, which is equivelant to the number of moves to reach the goal node
+                grid_cost.at(i).at(j) = std::abs(delta_x) + std::abs(delta_y);
+
+                if (grid_cost.at(i).at(j) < (min_cost_grid.at(0) + min_cost_grid.at(1)))
+                {
+                    min_cost_grid = {delta_x, delta_y};
+                    std::cout << "min_cost_grid" << min_cost_grid.at(0) << "," << min_cost_grid.at(1) << std::endl;
+                }
             }
         }
     }
 
-    double waypoint_x = grid2meterX(min_cost_grid.at(0));
-    double waypoint_y = grid2meterY(min_cost_grid.at(1));
+    std::cout << std::endl;
+
+    double waypoint_x = ((min_cost_grid.at(0)) * meters_to_pixel_conversion) - getPose2d().x;
+    double waypoint_y = (((min_cost_grid.at(1)) * meters_to_pixel_conversion) + getPose2d().y);
+
+    std::cout << "waypoint (" << waypoint_x << ", " << waypoint_y << ")" << std::endl;
 
     min_cost_waypoint = {waypoint_x, waypoint_y};
 
@@ -330,9 +340,11 @@ geometry_msgs::Pose BrickSearch::pose2dToPose(const geometry_msgs::Pose2D &pose_
 
 void BrickSearch::detection(void)
 {
+    std::cout << "Detection" << std::endl;
     ros::Rate rate(10);
     if (!image_.empty())
     {
+        std::cout << "Image" << std::endl;
         publish_image_ = image_;
         //BGR2HSV conversion
         cv::Mat hsv;
@@ -384,17 +396,17 @@ void BrickSearch::detection(void)
         }
         if (ratio > cutoff && brick_found_) //Might need to adjust this
         {
-            override = true;
+            override_ = true;
             //Take over control till ratio is certain amount. - This might need to be in higher loop so that values can be recalculated or not
 
             //Set linear and angular velocity override
             geometry_msgs::Twist twist{};
 
-            if (!centred && ratio < final) //Check condition //This needs to override other commands
+            if (!centred_ && ratio < final) //Check condition //This needs to override other commands
             {
                 if (cx >= (size.width / 2 - pixel_tolerance) && cx <= (size.width / 2 + pixel_tolerance))
                 {
-                    centred = true;
+                    centred_ = true;
                 }
                 else if (cx > size.width / 2)
                 {
@@ -409,14 +421,15 @@ void BrickSearch::detection(void)
                     cmd_vel_pub_.publish(twist); //Needs to be redefined?------------------------------
                 }
             }
-            else if (centred && ratio < final) //Centred and found// need to check ratio too
+            else if (centred_ && ratio < final) //Centred and found// need to check ratio too
             {
                 twist.angular.z = 0;
                 twist.linear.x = 0.1;
                 cmd_vel_pub_.publish(twist);
             }
-            else if (centred && ratio >= final)
+            else if (centred_ && ratio >= final)
             {
+                finished_ = true;
                 twist.angular.z = 0;
                 twist.linear.x = 0;
                 cmd_vel_pub_.publish(twist);
@@ -500,7 +513,7 @@ void BrickSearch::searchedArea(void)
                 robot.x = robot_x / meters_to_pixel_conversion;
                 robot.y = robot_y / meters_to_pixel_conversion;
                 cv::line(track_map_, robot, scan, cv::Scalar(255, 255, 255), 1);
-                std::cout << "ray: " << ray_x << "," << ray_y << std::endl;
+                // std::cout << "ray: " << ray_x << "," << ray_y << std::endl;
             }
         }
     }
@@ -639,16 +652,23 @@ void BrickSearch::mainLoop()
 
         //     cv::destroyWindow("map image");
         // }
-
-        searchedArea();
-
-        if (getGoalReachedStatus() == 3 || lock == false) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
+        if (!finished_)
         {
-            lock = true;
-
-            std::vector<double> goalWaypoint = exploration();
-            // BrickSearch::pathPlanning(1.5, 3);
-            pathPlanning(goalWaypoint.at(0), goalWaypoint.at(1));
+            detection();
+            searchedArea();
+            if (!override_)
+            {
+                if (getGoalReachedStatus() == 3 || lock == false) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
+                {
+                    lock = true;
+                    // move_base_action_client_.waitForResult();
+                    // std::cout << "Status: " << (move_base_action_client_.getState() << std::endl;
+                    std::vector<double> goalWaypoint = exploration();
+                    // BrickSearch::pathPlanning(1.5, 3);
+                    pathPlanning(goalWaypoint.at(0), goalWaypoint.at(1));
+                    // move_base_action_client_.waitForResult();
+                }
+            }
         }
 
         // move_base_action_client_.sendGoal(action_goal.goal);

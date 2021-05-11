@@ -47,12 +47,13 @@ private:
     cv::Size size;
     int cx;
     int cy;
-    const double cutoff = 0.6; //Adjust-----------------------
+    const double cutoff = 0.2; //Adjust-----------------------
     const double final = 0.8;  //Adjust
     double ratio;
-    bool override;
+    bool override_;
+    bool finished_;
     const int pixel_tolerance = 3; //Adjust-------------------
-    bool centred;
+    bool centred_;
     const int image_size_meters = 20;
     const int image_size_pixel = 384;
     const double meters_to_pixel_conversion = 0.05;
