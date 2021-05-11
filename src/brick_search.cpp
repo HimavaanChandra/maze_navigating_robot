@@ -243,29 +243,32 @@ std::vector<double> BrickSearch::exploration(void)
     std::vector<int> min_cost_grid = {385, 385};
     std::vector<double> min_cost_waypoint = {0, 0};
 
+    double robot_x_pixel = (getPose2d().x / meters_to_pixel_conversion) + image_size_pixel / 2;
+    double robot_y_pixel = -(getPose2d().y / meters_to_pixel_conversion) + image_size_pixel / 2;
+
     // calculate heuristic of all grids from current robot position
     std::cout << std::endl
               << "Initialising heuristic cost grid" << std::endl;
 
     // Looping through each node/grid in the gripmap_
-    std::cout << "map: ";
+    // std::cout << "map: ";
     for (int i = 0; i < image_size_pixel; i++)
     {
         for (int j = 0; j < image_size_pixel; j++)
         {
-            std::cout << track_map_.at<int>(i, j) << ",";
+            // std::cout << track_map_.at<int>(i, j) << ",";
             if ((track_map_.at<int>(i, j) != -1 && track_map_.at<int>(i, j) != 0))
             {
                 // Change in x distance between the current node/grid and the goal_node position
-                int delta_x = i - (((getPose2d().x) + (image_size_meters / 2)) / meters_to_pixel_conversion);
+                int delta_x = i - robot_x_pixel;
 
                 // Change in x distance between the current node/grid and the goal_node position
-                int delta_y = j - (((getPose2d().y) + (image_size_meters / 2)) / meters_to_pixel_conversion); //Might need to remove the negative if not working
+                int delta_y = j - robot_y_pixel; //Might need to remove the negative if not working
 
                 // Heuristic for each grid/node equals combined x and y distance, which is equivelant to the number of moves to reach the goal node
                 grid_cost.at(i).at(j) = std::abs(delta_x) + std::abs(delta_y);
 
-                if (grid_cost.at(i).at(j) < (min_cost_grid.at(0) + min_cost_grid.at(1)))
+                if (grid_cost.at(i).at(j) < std::abs(min_cost_grid.at(0)) + std::abs(min_cost_grid.at(1)))
                 {
                     min_cost_grid = {delta_x, delta_y};
                     std::cout << "min_cost_grid" << min_cost_grid.at(0) << "," << min_cost_grid.at(1) << std::endl;
@@ -274,10 +277,10 @@ std::vector<double> BrickSearch::exploration(void)
         }
     }
 
-    std::cout << std::endl;
+    // std::cout << std::endl;
 
-    double waypoint_x = ((min_cost_grid.at(0)) * meters_to_pixel_conversion) - getPose2d().x;
-    double waypoint_y = (((min_cost_grid.at(1)) * meters_to_pixel_conversion) + getPose2d().y);
+    double waypoint_x = ((min_cost_grid.at(0) + robot_x_pixel) - (image_size_pixel / 2)) * meters_to_pixel_conversion;
+    double waypoint_y = -((min_cost_grid.at(1) + robot_y_pixel) - (image_size_pixel / 2)) * meters_to_pixel_conversion;
 
     std::cout << "waypoint (" << waypoint_x << ", " << waypoint_y << ")" << std::endl;
 
