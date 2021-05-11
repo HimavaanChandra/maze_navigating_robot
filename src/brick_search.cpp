@@ -113,10 +113,20 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr &image_msg_ptr)
     // }
 
     // Copy the image message to a cv_bridge image pointer
-    cv_bridge::CvImagePtr image_ptr = cv_bridge::toCvCopy(image_msg_ptr);
+    // cv_bridge::CvImagePtr image_ptr = cv_bridge::toCvCopy(image_msg_ptr);
 
-    // This is the OpenCV image
-    image_ = image_ptr->image;
+    // // This is the OpenCV image
+    // image_ = image_ptr->image;
+
+    try
+    {
+        image_ = cv_bridge::toCvShare(image_msg_ptr, "bgr8")->image;
+        // cv::imshow("view", image);
+    }
+    catch (cv_bridge::Exception &e)
+    {
+        ROS_ERROR("Could not convert from '%s' to 'bgr8'.", image_msg_ptr->encoding.c_str());
+    }
 
     // You can set "brick_found_" to true to signal to "mainLoop" that you have found a brick
     // You may want to communicate more information
@@ -370,10 +380,11 @@ void BrickSearch::detection(void)
         cv::findContours(edges, contours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
         //Draw contours
         cv::drawContours(publish_image_, contours, 0, cv::Scalar(0, 255, 0), 2);
-
+        std::cout << " Pre Contours" << std::endl;
         //Get centre position of blob
         if (contours.size() > 0)
         {
+            std::cout << "Contours" << std::endl;
             //Get moments of contours
             cv::Moments m = cv::moments(contours[0], true);
             //centre of blob: https://www.pyimagesearch.com/2016/02/01/opencv-center-of-contour/
@@ -384,8 +395,8 @@ void BrickSearch::detection(void)
 
             double area = cv::contourArea(contours[0]);
 
-            size = publish_image_.size();
-            double frameArea = size.width * size.height;
+            size_ = publish_image_.size();
+            double frameArea = size_.width * size_.height;
             //Do ratio comparison then initiate takeover?
             ratio = area / frameArea;
             std::cout << "Contour Area: " << area << std::endl;    //--------Delete------------------------------------------------
@@ -405,32 +416,35 @@ void BrickSearch::detection(void)
             //Set linear and angular velocity override
             geometry_msgs::Twist twist{};
 
-            if (!centred_ && ratio < final) //Check condition //This needs to override other commands
+            if (ratio < final) //Check condition //This needs to override other commands
             {
-                if (cx >= (size.width / 2 - pixel_tolerance) && cx <= (size.width / 2 + pixel_tolerance))
+                if (cx >= (size_.width / 2 - pixel_tolerance) && cx <= (size_.width / 2 + pixel_tolerance))
                 {
-                    centred_ = true;
-                }
-                else if (cx > size.width / 2)
-                {
-                    twist.angular.z = -0.5; //Tune value
-                    twist.linear.x = 0;
+                    // centred_ = true; // Delete from here and main
+                    twist.angular.z = 0;
+                    twist.linear.x = 0.1;
                     cmd_vel_pub_.publish(twist);
                 }
-                else if (cx < size.width / 2)
+                else if (cx > size_.width / 2 + pixel_tolerance)
                 {
-                    twist.angular.z = 0.5; //Tune value
-                    twist.linear.x = 0;
+                    twist.angular.z = -0.2; //Tune value
+                    twist.linear.x = 0.05;
+                    cmd_vel_pub_.publish(twist);
+                }
+                else if (cx < size_.width / 2 - pixel_tolerance)
+                {
+                    twist.angular.z = 0.2; //Tune value
+                    twist.linear.x = 0.05;
                     cmd_vel_pub_.publish(twist); //Needs to be redefined?------------------------------
                 }
             }
-            else if (centred_ && ratio < final) //Centred and found// need to check ratio too
-            {
-                twist.angular.z = 0;
-                twist.linear.x = 0.1;
-                cmd_vel_pub_.publish(twist);
-            }
-            else if (centred_ && ratio >= final)
+            // else if (centred_ && ratio < final) //Centred and found// need to check ratio too
+            // {
+            //     twist.angular.z = 0;
+            //     twist.linear.x = 0.1;
+            //     cmd_vel_pub_.publish(twist);
+            // }
+            else if (ratio >= final)
             {
                 finished_ = true;
                 twist.angular.z = 0;
@@ -460,15 +474,62 @@ void BrickSearch::detection(void)
                 int ray_y = ranges_.at(i) * sin(map_angle); //Need to add metre to grid-----
                 ray_y = (ray_y + robot_y) / meters_to_pixel_conversion;
                 cv::Point brick(ray_x, ray_y);
-                cv::circle(track_map_, brick, 3, CV_RGB(255, 0, 0), 1); //There is gonna be a overriding problem here
+                cv::circle(map_image_, brick, 3, CV_RGB(255, 0, 0), 1); //There is gonna be a overriding problem here
+                imshow("map", map_image_); //Probs delete-------------
+                cv::waitKey(0);//Probs delete------------------------
                 //Need to publish image here, could fix by publishing to original map_image_
             }
         }
-        rate.sleep();
+        // cv::imshow("view", publish_image_); //Delete -----------------------------------------
+        // cv::waitKey(0);
+
         //Publish image
         detection_pub_.publish(cv_bridge::CvImage(std_msgs::Header(), "bgr8", publish_image_).toImageMsg());
+        rate.sleep();
     }
 }
+
+
+//Delete if not used--------------------------------------------------
+// void TurtleFollow::purePursuit(double centreDistance, double range)
+// {
+//   // Maximum translational velocity	Burger = 0.22 m/s	Waffle = 0.26 m/s
+//   // Maximum rotational velocity	Burger = 2.84 rad/s (162.72 deg/s)	Waffle = 1.82 rad/s (104.27 deg/s)
+//   double gamma = (2 * std::sin(centreDistance)) / std::pow(range, 2);
+//   // double linear_velocity_ = std::sqrt((6 * std::pow(9.81, 2)) / std::abs(gamma));
+//   double linear_velocity_ = 0.22;
+//   double angular_velocity_ = linear_velocity_ * gamma * 5;
+//   if (gamma < 0)
+//   {
+//     if (angular_velocity_ < 0)
+//     {
+//       angular_velocity_ = -angular_velocity_;
+//     }
+//   }
+//   else
+//   {
+//     if (angular_velocity_ > 0)
+//     {
+//       angular_velocity_ = -angular_velocity_;
+//     }
+//   }
+//   //Remove cout -----------------------------------------------------------------------------------------
+//   std::cout << "gamma: " << gamma << " linear: " << linear_velocity_ << " angular: " << angular_velocity_ << std::endl;
+//   if (linear_velocity_ > robot_.max_linv_)
+//   {
+//     linear_velocity_ = robot_.max_linv_;
+//   }
+
+//   while (linear_velocity_ > robot_.max_linv_ || angular_velocity_ > robot_.max_rotv_)
+//   {
+//     angular_velocity_ *= 0.99;
+//     linear_velocity_ *= 0.99;
+//   }
+
+//   robot_.twist_.linear.x = linear_velocity_;
+//   robot_.twist_.angular.z = angular_velocity_;
+// }
+
 
 void BrickSearch::searchedArea(void)
 {
@@ -672,6 +733,10 @@ void BrickSearch::mainLoop()
                     // move_base_action_client_.waitForResult();
                 }
             }
+        }
+        else
+        {
+            std::cout << "Brick has been located" << std::endl;
         }
 
         // move_base_action_client_.sendGoal(action_goal.goal);

@@ -44,15 +44,15 @@ private:
     cv::Mat image_;
     cv::Mat publish_image_;
     cv::Mat track_map_;
-    cv::Size size;
+    cv::Size size_;
     int cx;
     int cy;
-    const double cutoff = 0.2; //Adjust-----------------------
-    const double final = 0.8;  //Adjust
+    const double cutoff = 0.0; //Adjust-----------------------
+    const double final = 0.4;  //Adjust
     double ratio;
     bool override_;
     bool finished_;
-    const int pixel_tolerance = 3; //Adjust-------------------
+    const int pixel_tolerance = 10; //Adjust-------------------
     bool centred_;
     const int image_size_meters = 20;
     const int image_size_pixel = 384;
