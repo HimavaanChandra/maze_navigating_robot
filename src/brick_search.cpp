@@ -471,7 +471,9 @@ void BrickSearch::detection(void)
                 int ray_y = ranges_.at(i) * sin(map_angle); //Need to add metre to grid-----
                 ray_y = (ray_y + robot_y) / meters_to_pixel_conversion;
                 cv::Point brick(ray_x, ray_y);
-                cv::circle(track_map_, brick, 3, CV_RGB(255, 0, 0), 1); //There is gonna be a overriding problem here
+                cv::circle(map_image_, brick, 3, CV_RGB(255, 0, 0), 1); //There is gonna be a overriding problem here
+                imshow("map", map_image_); //Probs delete-------------
+                cv::waitKey(0);//Probs delete------------------------
                 //Need to publish image here, could fix by publishing to original map_image_
             }
         }
