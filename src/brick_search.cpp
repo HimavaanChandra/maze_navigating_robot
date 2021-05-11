@@ -466,56 +466,61 @@ void BrickSearch::searchedArea(void)
     double ray_x;
     double ray_y;
 
-    std::vector<float> rangesInFOV;
+    // std::vector<float> rangesInFOV;
     // Testing
-    cv::Size test = track_map_.size();
-    for (int i = 0; i < (test.height); i++)
-    {
-        cv::Point left(0, i);
-        cv::Point right(test.width, i);
-        cv::line(track_map_, left, right, cv::Scalar(0, 0, 0), 1);
-    }
-    std::cout << "Ranges: "; //------------------------------------------
+    // cv::Size test = track_map_.size();
+    // for (int i = 0; i < (test.height); i++)
+    // {
+    //     cv::Point left(0, i);
+    //     cv::Point right(test.width, i);
+    //     cv::line(track_map_, left, right, cv::Scalar(0, 0, 0), 1);
+    // }
+    // std::cout << "Ranges: "; //------------------------------------------
     for (int i = 0; i < ranges_.size(); i++)
     {
-        // Using lidar within FOV of camera which is 70 degrees - 35 on each side of robot front
-        if (((i >= (ranges_.size() - 35)) && i <= ranges_.size()) || (i >= 0 && i <= 35))
+        if (ranges_.at(i) > 0 && ranges_.at(i) <= 3)
         {
-            std::cout << ranges_.at(i) << ", "; //---------------------------------------------------
-            // Calculate angle of current lidar ray
-            double map_angle = wrapAngle(robot_theta + (i * M_PI) / 180);
-            // calculate x position where current lidar ray ends
-            ray_x = ranges_.at(i) * cos(map_angle);
-            ray_x = (ray_x + robot_x) / meters_to_pixel_conversion;
-            // std::cout << "ray_x: " << ray_x << std::endl;
+            // Using lidar within FOV of camera which is 70 degrees - 35 on each side of robot front
+            if (((i >= (ranges_.size() - 35)) && i <= ranges_.size()) || (i >= 0 && i <= 35))
+            {
+                // std::cout << ranges_.at(i) << ", "; //---------------------------------------------------
+                // Calculate angle of current lidar ray
+                double map_angle = wrapAngle(robot_theta + (i * M_PI) / 180);
+                // calculate x position where current lidar ray ends
+                ray_x = ranges_.at(i) * cos(map_angle);
+                ray_x = (ray_x + robot_x) / meters_to_pixel_conversion;
+                // std::cout << "ray_x: " << ray_x << std::endl;
 
-            // calculate y position where current lidar ray ends
-            ray_y = ranges_.at(i) * sin(map_angle);
-            ray_y = (ray_y + robot_y) / meters_to_pixel_conversion;
+                // calculate y position where current lidar ray ends
+                ray_y = ranges_.at(i) * sin(map_angle);
+                ray_y = (ray_y + robot_y) / meters_to_pixel_conversion;
 
-            cv::Point scan(ray_x, ray_y);
-            cv::circle(track_map_, scan, 3, CV_RGB(0, 255, 0), 1); //green
-            robot.x = robot_x / meters_to_pixel_conversion;
-            robot.y = robot_y / meters_to_pixel_conversion;
-            cv::line(track_map_, robot, scan, cv::Scalar(255, 255, 255), 1);
-            std::cout << "ray: " << ray_x << "," << ray_y << std::endl;
+                cv::Point scan(ray_x, ray_y);
+                // cv::circle(track_map_, scan, 3, CV_RGB(0, 255, 0), 1); //green
+                robot.x = robot_x / meters_to_pixel_conversion;
+                robot.y = robot_y / meters_to_pixel_conversion;
+                cv::line(track_map_, robot, scan, cv::Scalar(255, 255, 255), 1);
+                std::cout << "ray: " << ray_x << "," << ray_y << std::endl;
+            }
         }
     }
-    std::cout << std::endl;                                 //---------------------------------------------------------
-    cv::circle(track_map_, robot, 3, CV_RGB(255, 0, 0), 1); //Red
-    cv::Size bob = track_map_.size();
-    std::cout << "robot: " << robot.x << "," << robot.y << std::endl;
-    std::cout << "image size: " << bob.width << "," << bob.height << std::endl;
+    // std::cout << std::endl;                                 //---------------------------------------------------------
+    // cv::circle(track_map_, robot, 3, CV_RGB(255, 0, 0), 1); //Red
+    // cv::Size bob = track_map_.size();
+    // std::cout << "robot: " << robot.x << "," << robot.y << std::endl;
+    // std::cout << "image size: " << bob.width << "," << bob.height << std::endl;
     // ray: 766,766
     // robot: 383,383
     // image size: 384,384
 
-    //Publish image
+    //Publish to topic - probs remove---------------------------------------------------------------------------------
     searched_area_pub_.publish(cv_bridge::CvImage(std_msgs::Header(), "bgr8", track_map_).toImageMsg());
+    // searched_area_pub_.publish(track_map_.toImageMsg());
 
-    cv::imshow("track map", track_map_);
-    cv::waitKey(0);
-    cv::destroyWindow("track map");
+    cv::imshow("track_map", track_map_);
+    cv::waitKey(30);
+    // cv::waitKey(0);
+    // cv::destroyWindow("track map");
 
     //Do check for brick
     //If brick check depth image for location
@@ -601,9 +606,23 @@ void BrickSearch::mainLoop()
 
     // int i = 0;
     // This loop repeats until ROS shuts down, you probably want to put all your code in here
-
+    cv::namedWindow("track_map");
     track_map_ = map_image_;
-    ROS_INFO("trackmap_ saved");
+    cv::Size test = track_map_.size(); //rename------------------------------------------
+    //Set white pixels to grey
+    // for (int i = 0; i < test.height; i++)
+    // {
+    //     for (int j = 0; j < test.width; j++)
+    //     {
+    //         if (track_map_.at<int>(i,j) == -1)
+    //         {
+    //             track_map_.at<int>(i,j) = 100;
+    //         }
+    //     }
+    // }
+    // cv::waitKey(0);
+    // cv::flip(track_map_, track_map_, 0); //0 for vertical
+    ROS_INFO("track_map_ saved");
     while (ros::ok())
     {
         ROS_INFO("mainLoop");
@@ -644,4 +663,5 @@ void BrickSearch::mainLoop()
         // If box found? - Inside pure_pursuit_algorithm? Or here is ok if pure_pursuit is seperate thread or ROS package
         // Use open CV to move straight to the box or path planning to recalculate a path to the box position (calulcated using lidar or depth camera with current robot position)
     }
+    cv::destroyWindow("track_map");
 }
