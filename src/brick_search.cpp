@@ -267,7 +267,7 @@ std::vector<double> BrickSearch::exploration(void)
         for (int j = 0; j < image_size_pixel; j++)
         {
             // std::cout << track_map_.at<int>(i, j) << ",";
-            if ((track_map_.at<int>(i, j) != -1 && track_map_.at<int>(i, j) != 0))
+            if ((track_map_.at<int>(i, j) != -1 && track_map_.at<int>(i, j) != 0 && track_map_.at<int>(i, j) > 0))
             {
                 // Change in x distance between the current node/grid and the goal_node position
                 int delta_x = i - robot_x_pixel;
@@ -278,10 +278,11 @@ std::vector<double> BrickSearch::exploration(void)
                 // Heuristic for each grid/node equals combined x and y distance, which is equivelant to the number of moves to reach the goal node
                 grid_cost.at(i).at(j) = std::abs(delta_x) + std::abs(delta_y);
 
-                if (grid_cost.at(i).at(j) < std::abs(min_cost_grid.at(0)) + std::abs(min_cost_grid.at(1)))
+                if (grid_cost.at(i).at(j) < (std::abs(min_cost_grid.at(0) - robot_x_pixel) + std::abs(min_cost_grid.at(1) - robot_y_pixel)))
                 {
                     min_cost_grid = {i, j};
                     std::cout << "min_cost_grid" << min_cost_grid.at(0) << "," << min_cost_grid.at(1) << std::endl;
+                    std::cout << "delta" << delta_x << "," << delta_y << std::endl;
                 }
             }
         }
@@ -289,8 +290,8 @@ std::vector<double> BrickSearch::exploration(void)
 
     // std::cout << std::endl;
 
-    double waypoint_x = (min_cost_grid.at(0) - (image_size_pixel / 2)) * meters_to_pixel_conversion;
-    double waypoint_y = -(min_cost_grid.at(1) - (image_size_pixel / 2)) * meters_to_pixel_conversion;
+    double waypoint_y = (min_cost_grid.at(0) - (image_size_pixel / 2)) * meters_to_pixel_conversion;
+    double waypoint_x = (min_cost_grid.at(1) - (image_size_pixel / 2)) * meters_to_pixel_conversion;
 
     std::cout << "waypoint (" << waypoint_x << ", " << waypoint_y << ")" << std::endl;
 
@@ -475,8 +476,8 @@ void BrickSearch::detection(void)
                 ray_y = (ray_y + robot_y) / meters_to_pixel_conversion;
                 cv::Point brick(ray_x, ray_y);
                 cv::circle(map_image_, brick, 3, CV_RGB(255, 0, 0), 1); //There is gonna be a overriding problem here
-                imshow("map", map_image_); //Probs delete-------------
-                cv::waitKey(0);//Probs delete------------------------
+                imshow("map", map_image_);                              //Probs delete-------------
+                cv::waitKey(0);                                         //Probs delete------------------------
                 //Need to publish image here, could fix by publishing to original map_image_
             }
         }
@@ -488,7 +489,6 @@ void BrickSearch::detection(void)
         rate.sleep();
     }
 }
-
 
 //Delete if not used--------------------------------------------------
 // void TurtleFollow::purePursuit(double centreDistance, double range)
@@ -529,7 +529,6 @@ void BrickSearch::detection(void)
 //   robot_.twist_.linear.x = linear_velocity_;
 //   robot_.twist_.angular.z = angular_velocity_;
 // }
-
 
 void BrickSearch::searchedArea(void)
 {
@@ -722,16 +721,16 @@ void BrickSearch::mainLoop()
             searchedArea();
             if (!override_)
             {
-                // if (getGoalReachedStatus() == 3 || lock == false) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
-                // {
-                //     lock = true;
-                //     // move_base_action_client_.waitForResult();
-                //     // std::cout << "Status: " << (move_base_action_client_.getState() << std::endl;
-                //     std::vector<double> goalWaypoint = exploration();
-                //     // BrickSearch::pathPlanning(1.5, 3);
-                //     pathPlanning(goalWaypoint.at(0), goalWaypoint.at(1));
-                //     // move_base_action_client_.waitForResult();
-                // }
+                if (getGoalReachedStatus() == 3 || lock == false) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
+                {
+                    lock = true;
+                    // move_base_action_client_.waitForResult();
+                    // std::cout << "Status: " << (move_base_action_client_.getState() << std::endl;
+                    std::vector<double> goalWaypoint = exploration();
+                    // BrickSearch::pathPlanning(1.5, 3);
+                    pathPlanning(goalWaypoint.at(0), goalWaypoint.at(1));
+                    // move_base_action_client_.waitForResult();
+                }
             }
         }
         else
