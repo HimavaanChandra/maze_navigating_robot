@@ -280,7 +280,7 @@ std::vector<double> BrickSearch::exploration(void)
 
                 if (grid_cost.at(i).at(j) < std::abs(min_cost_grid.at(0)) + std::abs(min_cost_grid.at(1)))
                 {
-                    min_cost_grid = {delta_x, delta_y};
+                    min_cost_grid = {i, j};
                     std::cout << "min_cost_grid" << min_cost_grid.at(0) << "," << min_cost_grid.at(1) << std::endl;
                 }
             }
@@ -289,8 +289,8 @@ std::vector<double> BrickSearch::exploration(void)
 
     // std::cout << std::endl;
 
-    double waypoint_x = ((min_cost_grid.at(0) + robot_x_pixel) - (image_size_pixel / 2)) * meters_to_pixel_conversion;
-    double waypoint_y = -((min_cost_grid.at(1) + robot_y_pixel) - (image_size_pixel / 2)) * meters_to_pixel_conversion;
+    double waypoint_x = (min_cost_grid.at(0) - (image_size_pixel / 2)) * meters_to_pixel_conversion;
+    double waypoint_y = -(min_cost_grid.at(1) - (image_size_pixel / 2)) * meters_to_pixel_conversion;
 
     std::cout << "waypoint (" << waypoint_x << ", " << waypoint_y << ")" << std::endl;
 
@@ -722,16 +722,16 @@ void BrickSearch::mainLoop()
             searchedArea();
             if (!override_)
             {
-                if (getGoalReachedStatus() == 3 || lock == false) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
-                {
-                    lock = true;
-                    // move_base_action_client_.waitForResult();
-                    // std::cout << "Status: " << (move_base_action_client_.getState() << std::endl;
-                    std::vector<double> goalWaypoint = exploration();
-                    // BrickSearch::pathPlanning(1.5, 3);
-                    pathPlanning(goalWaypoint.at(0), goalWaypoint.at(1));
-                    // move_base_action_client_.waitForResult();
-                }
+                // if (getGoalReachedStatus() == 3 || lock == false) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
+                // {
+                //     lock = true;
+                //     // move_base_action_client_.waitForResult();
+                //     // std::cout << "Status: " << (move_base_action_client_.getState() << std::endl;
+                //     std::vector<double> goalWaypoint = exploration();
+                //     // BrickSearch::pathPlanning(1.5, 3);
+                //     pathPlanning(goalWaypoint.at(0), goalWaypoint.at(1));
+                //     // move_base_action_client_.waitForResult();
+                // }
             }
         }
         else
