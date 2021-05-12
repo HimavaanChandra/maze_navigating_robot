@@ -19,7 +19,8 @@
                 "/usr/include/**"
             ],
             "name": "ROS",
-            "configurationProvider": "ms-vscode.cmake-tools"
+            "configurationProvider": "ms-vscode.cmake-tools",
+            "compileCommands": "~/catkin_ws/build/compile_commands.json"
         }
     ],
     "version": 4

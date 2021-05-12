@@ -254,7 +254,7 @@ std::vector<double> BrickSearch::exploration(void)
     std::vector<double> min_cost_waypoint = {0, 0};
 
     double robot_x_pixel = (getPose2d().x / meters_to_pixel_conversion) + image_size_pixel / 2;
-    double robot_y_pixel = -(getPose2d().y / meters_to_pixel_conversion) + image_size_pixel / 2;
+    double robot_y_pixel = /*-*/ (getPose2d().y / meters_to_pixel_conversion) + image_size_pixel / 2;
 
     // calculate heuristic of all grids from current robot position
     std::cout << std::endl
@@ -266,9 +266,14 @@ std::vector<double> BrickSearch::exploration(void)
     {
         for (int j = 0; j < image_size_pixel; j++)
         {
+            cv::Scalar colour = track_map_.at<unsigned int>(i, j);
+
             // std::cout << track_map_.at<int>(i, j) << ",";
-            if ((track_map_.at<int>(i, j) != -1 && track_map_.at<int>(i, j) != 0 && track_map_.at<int>(i, j) > 0))
+
+            if (colour.val[0] == 0)
+
             {
+                // std::cout << "val" << colour.val[0] << std::endl;
                 // Change in x distance between the current node/grid and the goal_node position
                 int delta_x = i - robot_x_pixel;
 

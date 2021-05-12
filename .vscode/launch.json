@@ -1,0 +1,69 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Project Debug",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "args": [
+                "1"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+            // "preLaunchTask": "Makefile active file",
+            // "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "Catkin Debug",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/home/user/catkin_ws/devel/lib/maze_navigating_robot/main",
+            "additionalSOLibSearchPath": "/home/user/catkin_ws/devel/lib/maze_navigating_robot/;/home/user/catkin_ws/build/maze_navigating_robot/CMakeFiles",
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "catkin build",
+            "launchCompleteCommand": "exec-run"
+        }
+    ],
+    // "inputs": [
+    //     {
+    //         "id": "debugFile",
+    //         "type": "pickString",
+    //         "description": "What file do you want to debug?",
+    //         "default": "a4-prm",
+    //         "options": [
+    //             "a4-prm",
+    //             "a4-ros",
+    //             "a4-graph-test",
+    //             "a4-prm-test",
+    //             "a4-imagehandler-test",
+    //             "a4-region-test",
+    //             "a4-pathing-test",
+    //             "a4-map-test"
+    //         ]
+    //     }
+    // ]
+}
