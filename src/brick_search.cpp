@@ -689,16 +689,19 @@ void BrickSearch::mainLoop()
     cv::namedWindow("track_map");
     track_map_ = map_image_;
     cv::Size test = track_map_.size(); //rename------------------------------------------
-    //Set white pixels to grey
+    // Set white pixels to grey
     // for (int i = 0; i < test.height; i++)
     // {
-    //     for (int j = 0; j < test.width; j++)
-    //     {
-    //         if (track_map_.at<int>(i,j) == -1)
-    //         {
-    //             track_map_.at<int>(i,j) = 100;
-    //         }
-    //     }
+    //     // for (int j = 0; j < test.width; j++)
+    //     // {
+    //         // if (track_map_.at<int>(i,j) == '0')
+    //         // {
+    //            cv::Point point1(0,i);
+    //            cv::Point point2(test.width,i);
+    //            cv::line(track_map_,point1,point2,cv::Scalar(255,255,255),1);
+    //             // track_map_.at<int>(i,j) = '255';
+    //         // }
+    //     // }
     // }
     // cv::waitKey(0);
     // cv::flip(track_map_, track_map_, 0); //0 for vertical
