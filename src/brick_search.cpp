@@ -266,12 +266,11 @@ std::vector<double> BrickSearch::exploration(void)
     {
         for (int j = 0; j < image_size_pixel; j++)
         {
-            cv::Scalar colour = track_map_.at<unsigned int>(i, j);
+            auto colour = track_map_.at<uchar>(i, j);
 
             // std::cout << track_map_.at<int>(i, j) << ",";
 
-            if (colour.val[0] == 0)
-
+            if (int(colour) == 0)
             {
                 // std::cout << "val" << colour.val[0] << std::endl;
                 // Change in x distance between the current node/grid and the goal_node position
@@ -293,10 +292,10 @@ std::vector<double> BrickSearch::exploration(void)
         }
     }
 
-    // std::cout << std::endl;
+    // std::cout << std::type_info(track_map_ << std::endl;
 
-    double waypoint_y = (min_cost_grid.at(0) - (image_size_pixel / 2)) * meters_to_pixel_conversion;
-    double waypoint_x = (min_cost_grid.at(1) - (image_size_pixel / 2)) * meters_to_pixel_conversion;
+    double waypoint_x = (min_cost_grid.at(0) - (image_size_pixel / 2)) * meters_to_pixel_conversion;
+    double waypoint_y = (min_cost_grid.at(1) - (image_size_pixel / 2)) * meters_to_pixel_conversion;
 
     std::cout << "waypoint (" << waypoint_x << ", " << waypoint_y << ")" << std::endl;
 
