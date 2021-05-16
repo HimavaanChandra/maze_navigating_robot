@@ -113,6 +113,7 @@ private:
     void detection(void);
     std::vector<double> exploration(void);
     void searchedArea(void);
+    void wallBuffer(void);
 
     int meterY2grid(double y);
     int meterX2grid(double x);

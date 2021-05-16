@@ -238,6 +238,51 @@ double BrickSearch::grid2meterY(int y)
     return ny;
 }
 
+void BrickSearch::wallBuffer(void)
+{
+    // Set white pixels to grey
+    for (int i = 0; i < image_size_pixel; i++)
+    {
+        for (int j = 0; j < image_size_pixel; j++)
+        {
+            int colour = track_map_.at<int>(i, j);
+
+            if (colour == 100)
+            {
+                int buffer_size = 5;
+
+                for (int k = i - buffer_size; k < i + buffer_size; k++)
+                {
+                    cv::Point point1(k, j + 5);
+                    cv::Point point2(k, j - 5);
+
+                    cv::line(track_map_, point1, point2, cv::Scalar(100, 100, 100), 1);
+                    // for (int l = i - buffer_size; l < i + buffer_size; l++)
+                    // {
+                    //     track_map_.at<int>(i, j) = 100;
+                    // }
+                }
+
+                // {
+                //     track_map_.at<int>(i, j) = 100;
+                // }
+                // // for (int j = 0; j < test.width; j++)
+                // // {
+                // // if (track_map_.at<int>(i,j) == '0')
+                // // {
+                // cv::Point point1(0, i);
+                // cv::Point point2(test.width, i);
+                // cv::line(track_map_, point1, point2, cv::Scalar(255, 255, 255), 1);
+                // // track_map_.at<int>(i,j) = '255';
+                // // }
+                // // }
+            }
+        }
+        cv::waitKey(0);
+        cv::flip(track_map_, track_map_, 0); //0 for vertical
+    }
+}
+
 std::vector<double> BrickSearch::exploration(void)
 {
     // map_image_;'';
@@ -262,13 +307,61 @@ std::vector<double> BrickSearch::exploration(void)
 
     // Looping through each node/grid in the gripmap_
     // std::cout << "map: ";
+
     for (int i = 0; i < image_size_pixel; i++)
     {
         for (int j = 0; j < image_size_pixel; j++)
         {
+            // auto colour = track_map_.at<uchar>(i, j);
+
+            // // std::cout << track_map_.at<int>(i, j) << ",";
+
             auto colour = track_map_.at<uchar>(i, j);
 
-            // std::cout << track_map_.at<int>(i, j) << ",";
+            if (int(colour) == 255)
+            {
+                int buffer_size = 5;
+
+                // for (int k = i - buffer_size; k < i + buffer_size; k++)
+                // {
+                cv::Point point1(i, j);
+                cv::Point point2(i, j);
+
+                cv::circle(track_map_, point1, 3.5, cv::Scalar(100, 100, 100), 1.5);
+
+                // cv::line(track_map_, point1, point2, cv::Scalar(100, 100, 100), 5);
+                // for (int l = i - buffer_size; l < i + buffer_size; l++)
+                // {
+                //     track_map_.at<int>(i, j) = 100;
+                // }
+                // }
+                // cv::waitKey(0);
+                // cv::flip(track_map_, track_map_, 0); //0 for vertical
+                // {
+                //     track_map_.at<int>(i, j) = 100;
+                // }
+                // // for (int j = 0; j < test.width; j++)
+                // // {
+                // // if (track_map_.at<int>(i,j) == '0')
+                // // {
+                // cv::Point point1(0, i);
+                // cv::Point point2(test.width, i);
+                // cv::line(track_map_, point1, point2, cv::Scalar(255, 255, 255), 1);
+                // // track_map_.at<int>(i,j) = '255';
+                // // }
+                // // }
+            }
+        }
+    }
+    for (int i = 0; i < image_size_pixel; i++)
+    {
+        for (int j = 0; j < image_size_pixel; j++)
+        {
+            // auto colour = track_map_.at<uchar>(i, j);
+
+            // // std::cout << track_map_.at<int>(i, j) << ",";
+
+            auto colour = track_map_.at<uchar>(i, j);
 
             if (int(colour) == 0)
             {
