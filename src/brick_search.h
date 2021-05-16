@@ -15,6 +15,7 @@
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometry_msgs/Pose2D.h>
+#include <nav_msgs/OccupancyGrid.h>
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
 #include <actionlib/client/simple_action_client.h>
@@ -60,11 +61,16 @@ private:
     bool centred_;
     const int image_size_meters = 20;
     const int image_size_pixel = 384;
-    const double meters_to_pixel_conversion = 0.05;
+    const double meters_to_pixel_conversion = 0.05208333333;
     geometry_msgs::Pose robot_pose;
     double waypoint_x;
     double waypoint_y;
     std::vector<double> waypoints;
+    nav_msgs::OccupancyGrid global_occu_;
+    nav_msgs::OccupancyGrid local_occu_;
+    std::vector<std::vector<int>> global_costmap_;
+    std::vector<int> local_costmap_;
+
 
     // // Structures
     // struct robot_pose_2d
@@ -82,6 +88,8 @@ private:
     ros::Subscriber amcl_pose_sub_{};
     ros::Subscriber move_base_status_sub_{};
     ros::Subscriber odometry_sub_;
+    ros::Subscriber global_costmap_sub_;
+    ros::Subscriber local_costmap_sub_;
 
     // Velocity command publisher
     ros::Publisher cmd_vel_pub_{};
@@ -109,7 +117,8 @@ private:
     void moveBaseStatusCallback(const actionlib_msgs::GoalStatusArray &moveBaseStatus_msg_ptr);
     void laserCallback(const sensor_msgs::LaserScanConstPtr &msg);
     void odomCallback(const nav_msgs::OdometryConstPtr &msg);
-
+    void globalCostmapCallback(const nav_msgs::OccupancyGridPtr &msg);
+    void localCostmapCallback(const nav_msgs::OccupancyGridPtr &msg);
     int getGoalReachedStatus(void);
     void setGoalReachedStatus(int status);
 
