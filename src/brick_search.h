@@ -48,7 +48,7 @@ private:
     int cx;
     int cy;
     const double cutoff = 0.0; //Adjust-----------------------
-    const double final = 0.4;  //Adjust
+    const double final = 0.3;  //Adjust
     double ratio;
     bool override_;
     bool finished_;
