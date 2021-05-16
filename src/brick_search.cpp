@@ -282,6 +282,42 @@ void BrickSearch::wallBuffer(void)
         cv::flip(track_map_, track_map_, 0); //0 for vertical
     }
 }
+std::vector<double> BrickSearch::randomExploration(void)
+{
+    double waypoint_x_pixel;
+    double waypoint_y_pixel;
+
+    while (1)
+    {
+        std::random_device rd;                           // obtain a random number from hardware
+        std::mt19937 gen(rd());                          // seed the generator
+        std::uniform_int_distribution<> distr(192, 288); // define the range
+
+        int i = distr(gen); // generate numbers
+        int j = distr(gen); // generate numbers
+
+        // if (int(colour) == 0)
+        if ((i < 288 && i > 192 && j > 192 && j < 240) || (i < 288 && i > 240 && j > 240 && j < 288))
+        {
+            waypoint_x_pixel = (waypoint_x / meters_to_pixel_conversion) + (image_size_pixel / 2);
+            waypoint_y_pixel = (waypoint_y / meters_to_pixel_conversion) + (image_size_pixel / 2);
+
+            if (((i - waypoint_x_pixel) > 30 && (j - waypoint_y_pixel) > 30) || lock2 == false)
+            {
+
+                lock2 = true;
+
+                waypoint_x = (i - (image_size_pixel / 2)) * meters_to_pixel_conversion;
+                waypoint_y = (j - (image_size_pixel / 2)) * meters_to_pixel_conversion;
+                waypoints = {waypoint_x, waypoint_y};
+
+                return waypoints;
+
+                break;
+            }
+        }
+    }
+}
 
 std::vector<double> BrickSearch::exploration(void)
 {
@@ -307,6 +343,9 @@ std::vector<double> BrickSearch::exploration(void)
 
     // Looping through each node/grid in the gripmap_
     // std::cout << "map: ";
+    cv::Mat test;
+    cv::cvtColor(track_map_, test, cv::COLOR_GRAY2BGR);
+    // auto color = track_map_.at<uchar>(i, j);
 
     for (int i = 0; i < image_size_pixel; i++)
     {
@@ -327,7 +366,7 @@ std::vector<double> BrickSearch::exploration(void)
                 cv::Point point1(i, j);
                 cv::Point point2(i, j);
 
-                cv::circle(track_map_, point1, 3.5, cv::Scalar(100, 100, 100), 1.5);
+                // cv::circle(track_map_, point1, 3.5, cv::Scalar(100, 100, 100), 1.5);
 
                 // cv::line(track_map_, point1, point2, cv::Scalar(100, 100, 100), 5);
                 // for (int l = i - buffer_size; l < i + buffer_size; l++)
@@ -736,7 +775,26 @@ void BrickSearch::mainLoop()
     // This loop repeats until ROS shuts down, you probably want to put all your code in here
     cv::namedWindow("track_map");
     track_map_ = map_image_.clone(); 
-    cv::Size test = track_map_.size(); //rename------------------------------------------
+    
+    /////////////////////////////////////////////////////////////////////
+    // cv::Size test = track_map_.size(); //rename------------------------------------------
+    // std::cout << "image[ ";
+    // for (int i = 0; i < test.height; i++)
+    // {
+    //     for (int j = 0; j < test.width; j++)
+    //     {
+    //         auto colour = track_map_.at<uchar>(i, j);
+    //         if (int(colour) != 255)
+    //         {
+    //         std::cout << int(colour)  << ",";
+    //         }
+    //     }
+    // }
+    // std::cout << " ]" << std::endl;
+    // ros::shutdown();
+    /////////////////////////////////////////////////////////////////////
+
+
     // Set white pixels to grey
     // for (int i = 0; i < test.height; i++)
     // {
