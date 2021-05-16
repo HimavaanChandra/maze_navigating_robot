@@ -48,6 +48,12 @@ BrickSearch::BrickSearch(ros::NodeHandle &nh) : it_{nh}, ratio(0), override_(fal
     // Subscribe to odom
     odometry_sub_ = nh.subscribe("/odom", 10, &BrickSearch::odomCallback, this);
 
+    // Subscribe to global costmap_sub_
+    global_costmap_sub_ = nh.subscribe("/move_base/global_costmap/costmap", 10, &BrickSearch::globalCostmapCallback, this);
+
+    // Subscribe to local costmap_sub_
+    local_costmap_sub_ = nh.subscribe("/move_base/local_costmap/costmap", 10, &BrickSearch::localCostmapCallback, this);
+
     // Publish the processed camera image
     detection_pub_ = it_.advertise("/detection_image", 1);
 
@@ -158,6 +164,22 @@ void BrickSearch::moveBaseStatusCallback(const actionlib_msgs::GoalStatusArray &
         // std::cout << "back: " << moveBaseStatus_msg_ptr.status_list.back().status << std::endl;
     }
 }
+void BrickSearch::globalCostmapCallback(const nav_msgs::OccupancyGridPtr &msg)
+{
+    // global_costmap_ = msg->data.size;
+    for (int i = 0; i < msg->data.size(); i++)
+    {
+        for (int j = 0; j < msg->data.at(i).size(); j++)
+        {
+            global_costmap_.at(i).at(j).push_back(msg->data.at(i).(j));
+        }
+    }
+}
+
+void BrickSearch::localCostmapCallback(const nav_msgs::OccupancyGridPtr &msg)
+{
+    // local_costmap_ = msg->data.front();
+}
 
 void BrickSearch::pathPlanning(double x, double y)
 {
@@ -240,46 +262,22 @@ double BrickSearch::grid2meterY(int y)
 
 void BrickSearch::wallBuffer(void)
 {
-    // Set white pixels to grey
     for (int i = 0; i < image_size_pixel; i++)
     {
         for (int j = 0; j < image_size_pixel; j++)
         {
-            int colour = track_map_.at<int>(i, j);
 
-            if (colour == 100)
+            uchar colour = track_map_.at<uchar>(j, i);
+
+            if (int(colour) == 100)
             {
                 int buffer_size = 5;
 
-                for (int k = i - buffer_size; k < i + buffer_size; k++)
-                {
-                    cv::Point point1(k, j + 5);
-                    cv::Point point2(k, j - 5);
+                cv::Point point1(i, j); // check in case should be (j, i)------------------------------------------
 
-                    cv::line(track_map_, point1, point2, cv::Scalar(100, 100, 100), 1);
-                    // for (int l = i - buffer_size; l < i + buffer_size; l++)
-                    // {
-                    //     track_map_.at<int>(i, j) = 100;
-                    // }
-                }
-
-                // {
-                //     track_map_.at<int>(i, j) = 100;
-                // }
-                // // for (int j = 0; j < test.width; j++)
-                // // {
-                // // if (track_map_.at<int>(i,j) == '0')
-                // // {
-                // cv::Point point1(0, i);
-                // cv::Point point2(test.width, i);
-                // cv::line(track_map_, point1, point2, cv::Scalar(255, 255, 255), 1);
-                // // track_map_.at<int>(i,j) = '255';
-                // // }
-                // // }
+                cv::circle(track_map_, point1, 10, cv::Scalar(255, 255, 255), CV_FILLED);
             }
         }
-        cv::waitKey(0);
-        cv::flip(track_map_, track_map_, 0); //0 for vertical
     }
 }
 std::vector<double> BrickSearch::randomExploration(void)
@@ -322,6 +320,8 @@ std::vector<double> BrickSearch::randomExploration(void)
 std::vector<double> BrickSearch::exploration(void)
 {
     // map_image_;'';
+    double waypoint_x_pixel, waypoint_y_pixel;
+    double waypoint_x, waypoint_y;
 
     std::vector<std::vector<int>> grid_cost;
 
@@ -360,7 +360,7 @@ std::vector<double> BrickSearch::exploration(void)
 
                 cv::Point point1(i, j); // check in case should be (j, i)
 
-                cv::circle(track_map_, point1, 6, cv::Scalar(255, 255, 255), CV_FILLED);
+                cv::circle(track_map_, point1, 8, cv::Scalar(255, 255, 255), CV_FILLED);
             }
         }
     }
@@ -374,21 +374,28 @@ std::vector<double> BrickSearch::exploration(void)
 
             if (int(colour) == 0)
             {
-                // std::cout << "val" << colour.val[0] << std::endl;
-                // Change in x distance between the current node/grid and the goal_node position
-                int delta_x = i - robot_x_pixel;
-
-                // Change in x distance between the current node/grid and the goal_node position
-                int delta_y = j - robot_y_pixel; //Might need to remove the negative if not working
-
-                // Heuristic for each grid/node equals combined x and y distance, which is equivelant to the number of moves to reach the goal node
-                grid_cost.at(i).at(j) = std::abs(delta_x) + std::abs(delta_y);
-
-                if (grid_cost.at(i).at(j) < (std::abs(min_cost_grid.at(0) - robot_x_pixel) + std::abs(min_cost_grid.at(1) - robot_y_pixel)))
+                if (((i - min_cost_grid.at(0)) > 10 && (j - min_cost_grid.at(1)) > 10) || lock2 == false)
                 {
-                    min_cost_grid = {i, j};
-                    std::cout << "min_cost_grid" << min_cost_grid.at(0) << "," << min_cost_grid.at(1) << std::endl;
-                    std::cout << "delta" << delta_x << "," << delta_y << std::endl;
+                    if (global_costmap_.at(i).at(j) == 0)
+                    {
+
+                        // std::cout << "val" << colour.val[0] << std::endl;
+                        // Change in x distance between the current node/grid and the goal_node position
+                        int delta_x = i - robot_x_pixel;
+
+                        // Change in x distance between the current node/grid and the goal_node position
+                        int delta_y = j - robot_y_pixel; //Might need to remove the negative if not working
+
+                        // Heuristic for each grid/node equals combined x and y distance, which is equivelant to the number of moves to reach the goal node
+                        grid_cost.at(i).at(j) = std::abs(delta_x) + std::abs(delta_y);
+
+                        if (grid_cost.at(i).at(j) < (std::abs(min_cost_grid.at(0) - robot_x_pixel) + std::abs(min_cost_grid.at(1) - robot_y_pixel)))
+                        {
+                            min_cost_grid = {i, j};
+                            std::cout << "min_cost_grid" << min_cost_grid.at(0) << "," << min_cost_grid.at(1) << std::endl;
+                            std::cout << "delta" << delta_x << "," << delta_y << std::endl;
+                        }
+                    }
                 }
             }
         }
@@ -396,8 +403,8 @@ std::vector<double> BrickSearch::exploration(void)
 
     // std::cout << std::type_info(track_map_ << std::endl;
 
-    double waypoint_x = (min_cost_grid.at(0) - (image_size_pixel / 2)) * meters_to_pixel_conversion;
-    double waypoint_y = (min_cost_grid.at(1) - (image_size_pixel / 2)) * meters_to_pixel_conversion;
+    waypoint_x = (min_cost_grid.at(0) - (image_size_pixel / 2)) * meters_to_pixel_conversion;
+    waypoint_y = (min_cost_grid.at(1) - (image_size_pixel / 2)) * meters_to_pixel_conversion;
 
     std::cout << "waypoint (" << waypoint_x << ", " << waypoint_y << ")" << std::endl;
 
@@ -460,6 +467,8 @@ geometry_msgs::Pose BrickSearch::pose2dToPose(const geometry_msgs::Pose2D &pose_
 
 void BrickSearch::detection(void)
 {
+    ratio = 0;
+    override_ = false;
     ros::Rate rate(10);
     if (!image_.empty())
     {
@@ -563,9 +572,9 @@ void BrickSearch::detection(void)
                     scan_ahead = ranges_.at(i);
                 }
                 //Get robot x and y
-                double robot_x = getPose2d().x + (image_size_meters / 2); //Make struct?---------------------------------------------------------------
-                double robot_y = getPose2d().y + (image_size_meters / 2); //Make struct?---------------------------------------------------------------
-                double robot_theta = getPose2d().theta;                   //Make struct?---------------------------------------------------------------
+                double robot_x = getPose2d().x + (image_size_meters / 2);
+                double robot_y = getPose2d().y + (image_size_meters / 2);
+                double robot_theta = getPose2d().theta;
                 // Calculate angle of current lidar ray
                 double map_angle = wrapAngle(robot_theta + (i * M_PI) / 180);
                 // calculate x position where current lidar ray ends
@@ -595,8 +604,8 @@ void BrickSearch::searchedArea(void)
 {
     //70 degree FOV - 35 on each side
 
-    double robot_x = getPose2d().x + (image_size_meters / 2); //Make struct?---------------------------------------------------------------
-    double robot_y = getPose2d().y + (image_size_meters / 2); //Make struct?---------------------------------------------------------------
+    double robot_x = getPose2d().x + (image_size_meters / 2);
+    double robot_y = getPose2d().y + (image_size_meters / 2);
     double robot_theta = getPose2d().theta;
     cv::Point robot(robot_x, robot_y);
 
@@ -746,7 +755,7 @@ void BrickSearch::mainLoop()
     cv::namedWindow("track_map");
     track_map_ = map_image_.clone();
     cv::Size test = track_map_.size(); //rename------------------------------------------
-    
+
     /////////////////////////////////////////////////////////////////////
     // cv::Size test = track_map_.size(); //rename------------------------------------------
     // std::cout << "image[ ";
@@ -764,7 +773,6 @@ void BrickSearch::mainLoop()
     // std::cout << " ]" << std::endl;
     // ros::shutdown();
     /////////////////////////////////////////////////////////////////////
-
 
     // Set white pixels to grey
     // for (int i = 0; i < test.height; i++)
@@ -801,12 +809,35 @@ void BrickSearch::mainLoop()
         // }
         if (!finished_)
         {
-            detection();
+            detection(); //Might be able to remove----------------------
             searchedArea();
             if (!override_)
             {
+                double robot_theta = getPose2d().theta;
                 if (getGoalReachedStatus() == 3 || lock == false) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
                 {
+                    //For 360 turn
+                    // geometry_msgs::Twist twist{};
+                    // twist.angular.z = 1.;
+                    // cmd_vel_pub_.publish(twist);
+                    // ros::Duration(0.1).sleep();
+                    // while (getPose2d().theta != robot_theta)
+                    // {
+                    //     detection(); //Hopefully this won't cause an error////////
+                    //     searchedArea();
+                    //     if (override_)
+                    //     {
+                    //         break;
+                    //     }
+                    // ros::Duration(0.1).sleep();
+                    // }
+                    // twist.angular.z = 0;
+                    // cmd_vel_pub_.publish(twist);
+                    // if (override_)
+                    // {
+                    //     break;
+                    // }
+
                     lock = true;
                     // move_base_action_client_.waitForResult();
                     // std::cout << "Status: " << (move_base_action_client_.getState() << std::endl;
