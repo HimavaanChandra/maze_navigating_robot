@@ -358,11 +358,9 @@ geometry_msgs::Pose BrickSearch::pose2dToPose(const geometry_msgs::Pose2D &pose_
 
 void BrickSearch::detection(void)
 {
-    std::cout << "Detection" << std::endl;
     ros::Rate rate(10);
     if (!image_.empty())
     {
-        std::cout << "Image" << std::endl;
         publish_image_ = image_;
         //BGR2HSV conversion
         cv::Mat hsv;
@@ -385,11 +383,9 @@ void BrickSearch::detection(void)
         cv::findContours(edges, contours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
         //Draw contours
         cv::drawContours(publish_image_, contours, 0, cv::Scalar(0, 255, 0), 2);
-        std::cout << " Pre Contours" << std::endl;
         //Get centre position of blob
         if (contours.size() > 0)
         {
-            std::cout << "Contours" << std::endl;
             //Get moments of contours
             cv::Moments m = cv::moments(contours[0], true);
             //centre of blob: https://www.pyimagesearch.com/2016/02/01/opencv-center-of-contour/
@@ -407,7 +403,7 @@ void BrickSearch::detection(void)
             std::cout << "Contour Area: " << area << std::endl;    //--------Delete------------------------------------------------
             std::cout << "Frame Area: " << frameArea << std::endl; //--------Delete---------------------------------------------
             std::cout << "Ratio: " << ratio << std::endl;          //--------Delete---------------------------------------------
-            brick_found_ = true;                                   //Check this might cause error because of tolerance------------------------------
+            brick_found_ = true;
         }
         else
         {
@@ -432,13 +428,13 @@ void BrickSearch::detection(void)
                 }
                 else if (cx > size_.width / 2 + pixel_tolerance)
                 {
-                    twist.angular.z = -0.2; //Tune value
+                    twist.angular.z = -0.2; //Tune value---------------------------------------
                     twist.linear.x = 0.05;
                     cmd_vel_pub_.publish(twist);
                 }
                 else if (cx < size_.width / 2 - pixel_tolerance)
                 {
-                    twist.angular.z = 0.2; //Tune value
+                    twist.angular.z = 0.2; //Tune value------------------------------------------
                     twist.linear.x = 0.05;
                     cmd_vel_pub_.publish(twist); //Needs to be redefined?------------------------------
                 }
@@ -479,7 +475,7 @@ void BrickSearch::detection(void)
                 int ray_y = ranges_.at(i) * sin(map_angle); //Need to add metre to grid-----
                 ray_y = (ray_y + robot_y) / meters_to_pixel_conversion;
                 cv::Point brick(ray_x, ray_y);
-                cv::circle(map_image_, brick, 3, CV_RGB(255, 0, 0), 1); //There is gonna be a overriding problem here
+                cv::circle(map_image_, brick, 3, CV_RGB(255, 255, 255), 1); //There is gonna be a overriding problem here
                 imshow("map", map_image_);                              //Probs delete-------------
                 cv::waitKey(0);                                         //Probs delete------------------------
                 //Need to publish image here, could fix by publishing to original map_image_
@@ -687,7 +683,7 @@ void BrickSearch::mainLoop()
     // int i = 0;
     // This loop repeats until ROS shuts down, you probably want to put all your code in here
     cv::namedWindow("track_map");
-    track_map_ = map_image_;
+    track_map_ = map_image_.clone(); 
     cv::Size test = track_map_.size(); //rename------------------------------------------
     // Set white pixels to grey
     // for (int i = 0; i < test.height; i++)
