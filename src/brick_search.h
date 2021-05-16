@@ -1,6 +1,8 @@
 #include <atomic>
 #include <cmath>
 #include <thread>
+#include <iostream>
+#include <random>
 
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
@@ -39,6 +41,8 @@ private:
     int image_msg_count_ = 0;
     int goal_reached_status = 3; // 0 = goal not reached 3 = goal reached 4 = Failed to find a valid plan. Even after executing recovery behaviors.
     bool lock = false;
+    bool lock2 = false;
+
     tf2::Quaternion quaternion;
     geometry_msgs::PoseStamped goal;
     cv::Mat image_;
@@ -58,6 +62,9 @@ private:
     const int image_size_pixel = 384;
     const double meters_to_pixel_conversion = 0.05;
     geometry_msgs::Pose robot_pose;
+    double waypoint_x;
+    double waypoint_y;
+    std::vector<double> waypoints;
 
     // // Structures
     // struct robot_pose_2d
@@ -112,6 +119,7 @@ private:
     void pathPlanning(double x, double y);
     void detection(void);
     std::vector<double> exploration(void);
+    std::vector<double> randomExploration(void);
     void searchedArea(void);
     void wallBuffer(void);
 

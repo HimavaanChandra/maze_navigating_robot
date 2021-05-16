@@ -283,6 +283,43 @@ void BrickSearch::wallBuffer(void)
     }
 }
 
+std::vector<double> BrickSearch::randomExploration(void)
+{
+    double waypoint_x_pixel;
+    double waypoint_y_pixel;
+
+    while (1)
+    {
+        std::random_device rd;                           // obtain a random number from hardware
+        std::mt19937 gen(rd());                          // seed the generator
+        std::uniform_int_distribution<> distr(192, 288); // define the range
+
+        int i = distr(gen); // generate numbers
+        int j = distr(gen); // generate numbers
+
+        // if (int(colour) == 0)
+        if ((i < 288 && i > 192 && j > 192 && j < 240) || (i < 288 && i > 240 && j > 240 && j < 288))
+        {
+            waypoint_x_pixel = (waypoint_x / meters_to_pixel_conversion) + (image_size_pixel / 2);
+            waypoint_y_pixel = (waypoint_y / meters_to_pixel_conversion) + (image_size_pixel / 2);
+
+            if (((i - waypoint_x_pixel) > 30 && (j - waypoint_y_pixel) > 30) || lock2 == false)
+            {
+
+                lock2 = true;
+
+                waypoint_x = (i - (image_size_pixel / 2)) * meters_to_pixel_conversion;
+                waypoint_y = (j - (image_size_pixel / 2)) * meters_to_pixel_conversion;
+                waypoints = {waypoint_x, waypoint_y};
+
+                return waypoints;
+
+                break;
+            }
+        }
+    }
+}
+
 std::vector<double> BrickSearch::exploration(void)
 {
     // map_image_;'';
@@ -568,8 +605,8 @@ void BrickSearch::detection(void)
                 ray_y = (ray_y + robot_y) / meters_to_pixel_conversion;
                 cv::Point brick(ray_x, ray_y);
                 cv::circle(map_image_, brick, 3, CV_RGB(255, 255, 255), 1); //There is gonna be a overriding problem here
-                imshow("map", map_image_);                              //Probs delete-------------
-                cv::waitKey(0);                                         //Probs delete------------------------
+                imshow("map", map_image_);                                  //Probs delete-------------
+                cv::waitKey(0);                                             //Probs delete------------------------
                 //Need to publish image here, could fix by publishing to original map_image_
             }
         }
@@ -775,7 +812,7 @@ void BrickSearch::mainLoop()
     // int i = 0;
     // This loop repeats until ROS shuts down, you probably want to put all your code in here
     cv::namedWindow("track_map");
-    track_map_ = map_image_.clone(); 
+    track_map_ = map_image_.clone();
     cv::Size test = track_map_.size(); //rename------------------------------------------
     // Set white pixels to grey
     // for (int i = 0; i < test.height; i++)
