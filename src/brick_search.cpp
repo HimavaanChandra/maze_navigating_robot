@@ -466,7 +466,6 @@ void BrickSearch::detection(void)
                 double robot_theta = getPose2d().theta;                   //Make struct?---------------------------------------------------------------
                 // Calculate angle of current lidar ray
                 double map_angle = wrapAngle(robot_theta + (i * M_PI) / 180);
-
                 // calculate x position where current lidar ray ends
                 int ray_x = ranges_.at(i) * cos(map_angle); //Need to add metre to grid------
                 ray_x = (ray_x + robot_x) / meters_to_pixel_conversion;
