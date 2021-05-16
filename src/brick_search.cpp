@@ -312,56 +312,26 @@ std::vector<double> BrickSearch::exploration(void)
     {
         for (int j = 0; j < image_size_pixel; j++)
         {
-            // auto colour = track_map_.at<uchar>(i, j);
 
-            // // std::cout << track_map_.at<int>(i, j) << ",";
+            uchar colour = track_map_.at<uchar>(j, i);
 
-            auto colour = track_map_.at<uchar>(i, j);
-
-            if (int(colour) == 255)
+            if (int(colour) == 100)
             {
                 int buffer_size = 5;
 
-                // for (int k = i - buffer_size; k < i + buffer_size; k++)
-                // {
                 cv::Point point1(i, j);
-                cv::Point point2(i, j);
 
-                cv::circle(track_map_, point1, 3.5, cv::Scalar(100, 100, 100), 1.5);
-
-                // cv::line(track_map_, point1, point2, cv::Scalar(100, 100, 100), 5);
-                // for (int l = i - buffer_size; l < i + buffer_size; l++)
-                // {
-                //     track_map_.at<int>(i, j) = 100;
-                // }
-                // }
-                // cv::waitKey(0);
-                // cv::flip(track_map_, track_map_, 0); //0 for vertical
-                // {
-                //     track_map_.at<int>(i, j) = 100;
-                // }
-                // // for (int j = 0; j < test.width; j++)
-                // // {
-                // // if (track_map_.at<int>(i,j) == '0')
-                // // {
-                // cv::Point point1(0, i);
-                // cv::Point point2(test.width, i);
-                // cv::line(track_map_, point1, point2, cv::Scalar(255, 255, 255), 1);
-                // // track_map_.at<int>(i,j) = '255';
-                // // }
-                // // }
+                cv::circle(track_map_, point1, 6, cv::Scalar(255, 255, 255), CV_FILLED);
             }
         }
     }
+
     for (int i = 0; i < image_size_pixel; i++)
     {
         for (int j = 0; j < image_size_pixel; j++)
         {
-            // auto colour = track_map_.at<uchar>(i, j);
 
-            // // std::cout << track_map_.at<int>(i, j) << ",";
-
-            auto colour = track_map_.at<uchar>(i, j);
+            uchar colour = track_map_.at<uchar>(j, i);
 
             if (int(colour) == 0)
             {
@@ -568,8 +538,8 @@ void BrickSearch::detection(void)
                 ray_y = (ray_y + robot_y) / meters_to_pixel_conversion;
                 cv::Point brick(ray_x, ray_y);
                 cv::circle(map_image_, brick, 3, CV_RGB(255, 255, 255), 1); //There is gonna be a overriding problem here
-                imshow("map", map_image_);                              //Probs delete-------------
-                cv::waitKey(0);                                         //Probs delete------------------------
+                imshow("map", map_image_);                                  //Probs delete-------------
+                cv::waitKey(0);                                             //Probs delete------------------------
                 //Need to publish image here, could fix by publishing to original map_image_
             }
         }
@@ -735,7 +705,7 @@ void BrickSearch::mainLoop()
     // int i = 0;
     // This loop repeats until ROS shuts down, you probably want to put all your code in here
     cv::namedWindow("track_map");
-    track_map_ = map_image_.clone(); 
+    track_map_ = map_image_.clone();
     cv::Size test = track_map_.size(); //rename------------------------------------------
     // Set white pixels to grey
     // for (int i = 0; i < test.height; i++)
