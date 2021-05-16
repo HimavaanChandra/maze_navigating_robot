@@ -318,7 +318,7 @@ std::vector<double> BrickSearch::exploration(void)
 
             auto colour = track_map_.at<uchar>(i, j);
 
-            if (int(colour) == 255)
+            if (double(colour) >-20 && double(colour) < 255)
             {
                 int buffer_size = 5;
 
