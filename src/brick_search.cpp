@@ -619,46 +619,6 @@ void BrickSearch::detection(void)
     }
 }
 
-//Delete if not used--------------------------------------------------
-// void TurtleFollow::purePursuit(double centreDistance, double range)
-// {
-//   // Maximum translational velocity	Burger = 0.22 m/s	Waffle = 0.26 m/s
-//   // Maximum rotational velocity	Burger = 2.84 rad/s (162.72 deg/s)	Waffle = 1.82 rad/s (104.27 deg/s)
-//   double gamma = (2 * std::sin(centreDistance)) / std::pow(range, 2);
-//   // double linear_velocity_ = std::sqrt((6 * std::pow(9.81, 2)) / std::abs(gamma));
-//   double linear_velocity_ = 0.22;
-//   double angular_velocity_ = linear_velocity_ * gamma * 5;
-//   if (gamma < 0)
-//   {
-//     if (angular_velocity_ < 0)
-//     {
-//       angular_velocity_ = -angular_velocity_;
-//     }
-//   }
-//   else
-//   {
-//     if (angular_velocity_ > 0)
-//     {
-//       angular_velocity_ = -angular_velocity_;
-//     }
-//   }
-//   //Remove cout -----------------------------------------------------------------------------------------
-//   std::cout << "gamma: " << gamma << " linear: " << linear_velocity_ << " angular: " << angular_velocity_ << std::endl;
-//   if (linear_velocity_ > robot_.max_linv_)
-//   {
-//     linear_velocity_ = robot_.max_linv_;
-//   }
-
-//   while (linear_velocity_ > robot_.max_linv_ || angular_velocity_ > robot_.max_rotv_)
-//   {
-//     angular_velocity_ *= 0.99;
-//     linear_velocity_ *= 0.99;
-//   }
-
-//   robot_.twist_.linear.x = linear_velocity_;
-//   robot_.twist_.angular.z = angular_velocity_;
-// }
-
 void BrickSearch::searchedArea(void)
 {
     //70 degree FOV - 35 on each side
