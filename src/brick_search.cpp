@@ -300,8 +300,6 @@ std::vector<double> BrickSearch::randomExploration(void)
             if (((i - waypoint_x_pixel) > 30 && (j - waypoint_y_pixel) > 30) || lock2 == false)
             {
 
-                lock2 = true;
-
                 waypoint_x = (i - (image_size_pixel / 2)) * meters_to_pixel_conversion;
                 waypoint_y = (j - (image_size_pixel / 2)) * meters_to_pixel_conversion;
                 waypoints = {waypoint_x, waypoint_y};
@@ -329,8 +327,8 @@ std::vector<double> BrickSearch::exploration(void)
     std::vector<int> min_cost_grid = {385, 385};
     std::vector<double> min_cost_waypoint = {0, 0};
 
-    double robot_x_pixel = (getPose2d().x / meters_to_pixel_conversion) + image_size_pixel / 2;
-    double robot_y_pixel = /*-*/ (getPose2d().y / meters_to_pixel_conversion) + image_size_pixel / 2;
+    double robot_x_pixel = ((getPose2d().x) / meters_to_pixel_conversion) + image_size_pixel / 2;
+    double robot_y_pixel = /*-*/ ((getPose2d().y) / meters_to_pixel_conversion) + image_size_pixel / 2;
 
     // lock2 = false;
 
@@ -371,11 +369,10 @@ std::vector<double> BrickSearch::exploration(void)
 
             if (int(colour) == 0)
             {
-                if (((std::abs(i - robot_x_pixel) > 10 && std::abs(j - robot_y_pixel) > 10)))
+                if (((std::abs(i - (robot_x_pixel)-9.6) > 10 && std::abs(j - (robot_y_pixel)-9.6) > 10)))
                 {
                     // if (global_costmap_.at(i).at(j) == 0)
                     // {
-                    lock2 = true;
                     // std::cout << "val" << colour.val[0] << std::endl;
                     // Change in x distance between the current node/grid and the goal_node position
                     int delta_x = i - robot_x_pixel;
@@ -524,7 +521,7 @@ void BrickSearch::detection(void)
         }
         if (ratio > cutoff && brick_found_) //Might need to adjust this
         {
-            override_ = true;
+            // override_ = true;
             //Take over control till ratio is certain amount. - This might need to be in higher loop so that values can be recalculated or not
 
             //Set linear and angular velocity override
@@ -532,8 +529,16 @@ void BrickSearch::detection(void)
 
             if (ratio < final) //Check condition //This needs to override other commands
             {
-                //Do a lock so only runs once
                 //Publish waypoint ontop of itself
+                if (lock2 == false)
+                {
+                    double x_waypoint = getPose2d().x;
+                    double y_waypoint = getPose2d().y;
+                    pathPlanning(x_waypoint, y_waypoint);
+                    override_ = true;
+                    lock2 = true;
+                }
+                std::cout << "Driving to brick" << std::endl;
 
                 if (cx >= (size_.width / 2 - pixel_tolerance) && cx <= (size_.width / 2 + pixel_tolerance))
                 {
@@ -582,7 +587,7 @@ void BrickSearch::detection(void)
                 // calculate y position where current lidar ray ends
                 int ray_y = ranges_.at(i) * sin(map_angle); //Need to add metre to grid-----
                 ray_y = (ray_y + robot_y) / meters_to_pixel_conversion;
-                cv::Point brick(ray_x, ray_y);
+                cv::Point brick(ray_x - 0.5, ray_y - 0.5);
                 cv::circle(map_image_, brick, 3, CV_RGB(255, 255, 255), 1); //There is gonna be a overriding problem here
                 imshow("map", map_image_);                                  //Probs delete-------------
                 cv::waitKey(0);                                             //Probs delete------------------------
@@ -767,7 +772,7 @@ void BrickSearch::mainLoop()
         {
             detection(); //Might be able to remove----------------------
             searchedArea();
-            if (!override_)
+            if (override_ == false)
             {
                 double robot_theta = getPose2d().theta;
                 if ((localised_ == true && getGoalReachedStatus() == 3) || getGoalReachedStatus() == 4 || (localised_ == true && lock == false)) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
