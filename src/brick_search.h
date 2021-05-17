@@ -63,14 +63,15 @@ private:
     const int image_size_pixel = 384;
     const double meters_to_pixel_conversion = 0.05208333333;
     geometry_msgs::Pose robot_pose;
-    double waypoint_x;
-    double waypoint_y;
     std::vector<double> waypoints;
     nav_msgs::OccupancyGrid global_occu_;
     nav_msgs::OccupancyGrid local_occu_;
     std::vector<std::vector<int>> global_costmap_;
     std::vector<int> local_costmap_;
-
+    double waypoint_x_pixel;
+    double waypoint_y_pixel;
+    double waypoint_x;
+    double waypoint_y;
 
     // // Structures
     // struct robot_pose_2d
@@ -102,7 +103,6 @@ private:
     image_transport::Subscriber image_sub_{};
 
     image_transport::Publisher detection_pub_;
-    image_transport::Publisher searched_area_pub_;
 
     // Lidar Subscriber and data
     ros::Subscriber laser_sub_;
@@ -117,8 +117,8 @@ private:
     void moveBaseStatusCallback(const actionlib_msgs::GoalStatusArray &moveBaseStatus_msg_ptr);
     void laserCallback(const sensor_msgs::LaserScanConstPtr &msg);
     void odomCallback(const nav_msgs::OdometryConstPtr &msg);
-    void globalCostmapCallback(const nav_msgs::OccupancyGridPtr &msg);
-    void localCostmapCallback(const nav_msgs::OccupancyGridPtr &msg);
+    // void globalCostmapCallback(const nav_msgs::OccupancyGridPtr &msg);
+    // void localCostmapCallback(const nav_msgs::OccupancyGridPtr &msg);
     int getGoalReachedStatus(void);
     void setGoalReachedStatus(int status);
 

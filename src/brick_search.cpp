@@ -48,17 +48,14 @@ BrickSearch::BrickSearch(ros::NodeHandle &nh) : it_{nh}, ratio(0), override_(fal
     // Subscribe to odom
     odometry_sub_ = nh.subscribe("/odom", 10, &BrickSearch::odomCallback, this);
 
-    // Subscribe to global costmap_sub_
-    global_costmap_sub_ = nh.subscribe("/move_base/global_costmap/costmap", 10, &BrickSearch::globalCostmapCallback, this);
+    // // Subscribe to global costmap_sub_
+    // global_costmap_sub_ = nh.subscribe("/move_base/global_costmap/costmap", 10, &BrickSearch::globalCostmapCallback, this);
 
-    // Subscribe to local costmap_sub_
-    local_costmap_sub_ = nh.subscribe("/move_base/local_costmap/costmap", 10, &BrickSearch::localCostmapCallback, this);
+    // // Subscribe to local costmap_sub_
+    // local_costmap_sub_ = nh.subscribe("/move_base/local_costmap/costmap", 10, &BrickSearch::localCostmapCallback, this);
 
     // Publish the processed camera image
     detection_pub_ = it_.advertise("/detection_image", 1);
-
-    // Publish searched area
-    searched_area_pub_ = it_.advertise("/searched_area", 1);
 
     // Advertise "cmd_vel" publisher to control TurtleBot manually
     cmd_vel_pub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel", 1, false);
@@ -164,27 +161,27 @@ void BrickSearch::moveBaseStatusCallback(const actionlib_msgs::GoalStatusArray &
         // std::cout << "back: " << moveBaseStatus_msg_ptr.status_list.back().status << std::endl;
     }
 }
-void BrickSearch::globalCostmapCallback(const nav_msgs::OccupancyGridPtr &msg)
-{
-    // global_costmap_ = msg->data.size;
-    for (int i = 0; i < msg->data.size(); i++)
-    {
-        for (int j = 0; j < msg->data.at(i).size(); j++)
-        {
-            global_costmap_.at(i).at(j).push_back(msg->data.at(i).(j));
-        }
-    }
-}
+// void BrickSearch::globalCostmapCallback(const nav_msgs::OccupancyGridPtr &msg)
+// {
+//     // global_costmap_ = msg->data.size;
+//     for (int i = 0; i < msg->data.size(); i++)
+//     {
+//         for (int j = 0; j < msg->data.at(i).size(); j++)
+//         {
+//             global_costmap_.at(i).at(j).push_back(msg->data.at(i).(j));
+//         }
+//     }
+// }
 
-void BrickSearch::localCostmapCallback(const nav_msgs::OccupancyGridPtr &msg)
-{
-    // local_costmap_ = msg->data.front();
-}
+// void BrickSearch::localCostmapCallback(const nav_msgs::OccupancyGridPtr &msg)
+// {
+//     // local_costmap_ = msg->data.front();
+// }
 
 void BrickSearch::pathPlanning(double x, double y)
 {
 
-    goal = {};
+    // goal = {};
 
     // i++;
     goal.pose.position.x = x;
@@ -199,9 +196,9 @@ void BrickSearch::pathPlanning(double x, double y)
     goal.pose.orientation.z = quaternion.getZ();
 
     goal.header.frame_id = "map";
-
+    // ros::Duration(0.1).sleep();
     move_base_simple_goal_.publish(goal);
-
+    // ros::Duration(0.1).sleep();
     ROS_INFO("Sending goal...");
 }
 
@@ -260,7 +257,7 @@ double BrickSearch::grid2meterY(int y)
     return ny;
 }
 
-void BrickSearch::wallBuffer(void)
+void BrickSearch::wallBuffer(void) //Delete in not used-------------------------------------------------------
 {
     for (int i = 0; i < image_size_pixel; i++)
     {
@@ -320,8 +317,6 @@ std::vector<double> BrickSearch::randomExploration(void)
 std::vector<double> BrickSearch::exploration(void)
 {
     // map_image_;'';
-    double waypoint_x_pixel, waypoint_y_pixel;
-    double waypoint_x, waypoint_y;
 
     std::vector<std::vector<int>> grid_cost;
 
@@ -336,6 +331,8 @@ std::vector<double> BrickSearch::exploration(void)
 
     double robot_x_pixel = (getPose2d().x / meters_to_pixel_conversion) + image_size_pixel / 2;
     double robot_y_pixel = /*-*/ (getPose2d().y / meters_to_pixel_conversion) + image_size_pixel / 2;
+
+    // lock2 = false;
 
     // calculate heuristic of all grids from current robot position
     std::cout << std::endl
@@ -360,7 +357,7 @@ std::vector<double> BrickSearch::exploration(void)
 
                 cv::Point point1(i, j); // check in case should be (j, i)
 
-                cv::circle(track_map_, point1, 8, cv::Scalar(255, 255, 255), CV_FILLED);
+                cv::circle(track_map_, point1, 9, cv::Scalar(255, 255, 255), CV_FILLED);
             }
         }
     }
@@ -374,28 +371,28 @@ std::vector<double> BrickSearch::exploration(void)
 
             if (int(colour) == 0)
             {
-                if (((i - min_cost_grid.at(0)) > 10 && (j - min_cost_grid.at(1)) > 10) || lock2 == false)
+                if (((std::abs(i - robot_x_pixel) > 10 && std::abs(j - robot_y_pixel) > 10)))
                 {
-                    if (global_costmap_.at(i).at(j) == 0)
+                    // if (global_costmap_.at(i).at(j) == 0)
+                    // {
+                    lock2 = true;
+                    // std::cout << "val" << colour.val[0] << std::endl;
+                    // Change in x distance between the current node/grid and the goal_node position
+                    int delta_x = i - robot_x_pixel;
+
+                    // Change in x distance between the current node/grid and the goal_node position
+                    int delta_y = j - robot_y_pixel; //Might need to remove the negative if not working
+
+                    // Heuristic for each grid/node equals combined x and y distance, which is equivelant to the number of moves to reach the goal node
+                    grid_cost.at(i).at(j) = std::abs(delta_x) + std::abs(delta_y);
+
+                    if (grid_cost.at(i).at(j) < (std::abs(min_cost_grid.at(0) - robot_x_pixel) + std::abs(min_cost_grid.at(1) - robot_y_pixel)))
                     {
-
-                        // std::cout << "val" << colour.val[0] << std::endl;
-                        // Change in x distance between the current node/grid and the goal_node position
-                        int delta_x = i - robot_x_pixel;
-
-                        // Change in x distance between the current node/grid and the goal_node position
-                        int delta_y = j - robot_y_pixel; //Might need to remove the negative if not working
-
-                        // Heuristic for each grid/node equals combined x and y distance, which is equivelant to the number of moves to reach the goal node
-                        grid_cost.at(i).at(j) = std::abs(delta_x) + std::abs(delta_y);
-
-                        if (grid_cost.at(i).at(j) < (std::abs(min_cost_grid.at(0) - robot_x_pixel) + std::abs(min_cost_grid.at(1) - robot_y_pixel)))
-                        {
-                            min_cost_grid = {i, j};
-                            std::cout << "min_cost_grid" << min_cost_grid.at(0) << "," << min_cost_grid.at(1) << std::endl;
-                            std::cout << "delta" << delta_x << "," << delta_y << std::endl;
-                        }
+                        min_cost_grid = {i, j};
+                        std::cout << "min_cost_grid" << min_cost_grid.at(0) << "," << min_cost_grid.at(1) << std::endl;
+                        std::cout << "delta" << delta_x << "," << delta_y << std::endl;
                     }
+                    // }
                 }
             }
         }
@@ -405,10 +402,15 @@ std::vector<double> BrickSearch::exploration(void)
 
     waypoint_x = (min_cost_grid.at(0) - (image_size_pixel / 2)) * meters_to_pixel_conversion;
     waypoint_y = (min_cost_grid.at(1) - (image_size_pixel / 2)) * meters_to_pixel_conversion;
+    // cv::Point pointxy(min_cost_grid.at(0),min_cost_grid.at(1));
+    // cv::circle(track_map_, pointxy, 2,cv::Scalar(100,100,100), CV_FILLED);
+    // cv::imshow("track_map", track_map_);
+    // cv::waitKey(0);
+    // cv::destroyWindow("track_map");
 
     std::cout << "waypoint (" << waypoint_x << ", " << waypoint_y << ")" << std::endl;
 
-    min_cost_waypoint = {waypoint_x, waypoint_y};
+    min_cost_waypoint = {waypoint_x - 0.5, waypoint_y - 0.5};
 
     return min_cost_waypoint;
 
@@ -530,6 +532,9 @@ void BrickSearch::detection(void)
 
             if (ratio < final) //Check condition //This needs to override other commands
             {
+                //Do a lock so only runs once
+                //Publish waypoint ontop of itself
+
                 if (cx >= (size_.width / 2 - pixel_tolerance) && cx <= (size_.width / 2 + pixel_tolerance))
                 {
                     // centred_ = true; // Delete from here and main
@@ -550,12 +555,6 @@ void BrickSearch::detection(void)
                     cmd_vel_pub_.publish(twist); //Needs to be redefined?------------------------------
                 }
             }
-            // else if (centred_ && ratio < final) //Centred and found// need to check ratio too
-            // {
-            //     twist.angular.z = 0;
-            //     twist.linear.x = 0.1;
-            //     cmd_vel_pub_.publish(twist);
-            // }
             else if (ratio >= final)
             {
                 finished_ = true;
@@ -580,7 +579,6 @@ void BrickSearch::detection(void)
                 // calculate x position where current lidar ray ends
                 int ray_x = ranges_.at(i) * cos(map_angle); //Need to add metre to grid------
                 ray_x = (ray_x + robot_x) / meters_to_pixel_conversion;
-
                 // calculate y position where current lidar ray ends
                 int ray_y = ranges_.at(i) * sin(map_angle); //Need to add metre to grid-----
                 ray_y = (ray_y + robot_y) / meters_to_pixel_conversion;
@@ -659,10 +657,6 @@ void BrickSearch::searchedArea(void)
     // robot: 383,383
     // image size: 384,384
 
-    //Publish to topic - probs remove---------------------------------------------------------------------------------
-    searched_area_pub_.publish(cv_bridge::CvImage(std_msgs::Header(), "bgr8", track_map_).toImageMsg());
-    // searched_area_pub_.publish(track_map_.toImageMsg());
-
     cv::imshow("track_map", track_map_);
     cv::waitKey(30);
     // cv::waitKey(0);
@@ -726,30 +720,6 @@ void BrickSearch::mainLoop()
     twist.angular.z = 0.;
     cmd_vel_pub_.publish(twist);
 
-    // The map is stored in "map_"
-    // You will probably need the data stored in "map_.info"
-    // You can also access the map data as an OpenCV image with "map_image_"
-
-    // Here's an example of getting the current pose and sending a goal to "move_base":
-    // geometry_msgs::Pose2D pose_2d = getPose2d();
-
-    // ROS_INFO_STREAM("Current pose: " << pose_2d);
-
-    // // Move forward 0.5 m
-    // pose_2d.x += 0.5 * std::cos(pose_2d.theta);
-    // pose_2d.y += 0.5 * std::sin(pose_2d.theta);
-
-    // ROS_INFO_STREAM("Target pose: " << pose_2d);
-
-    // // Send a goal to "move_base" with "move_base_action_client_"
-    // move_base_msgs::MoveBaseActionGoal action_goal{};
-
-    // action_goal.goal.target_pose.header.frame_id = "map";
-    // action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
-
-    // ROS_INFO("Sending goal...");
-    // move_base_action_client_.sendGoal(action_goal.goal);
-
     // int i = 0;
     // This loop repeats until ROS shuts down, you probably want to put all your code in here
     cv::namedWindow("track_map");
@@ -774,29 +744,14 @@ void BrickSearch::mainLoop()
     // ros::shutdown();
     /////////////////////////////////////////////////////////////////////
 
-    // Set white pixels to grey
-    // for (int i = 0; i < test.height; i++)
-    // {
-    //     // for (int j = 0; j < test.width; j++)
-    //     // {
-    //         // if (track_map_.at<int>(i,j) == '0')
-    //         // {
-    //            cv::Point point1(0,i);
-    //            cv::Point point2(test.width,i);
-    //            cv::line(track_map_,point1,point2,cv::Scalar(255,255,255),1);
-    //             // track_map_.at<int>(i,j) = '255';
-    //         // }
-    //     // }
-    // }
-    // cv::waitKey(0);
-    // cv::flip(track_map_, track_map_, 0); //0 for vertical
     ROS_INFO("track_map_ saved");
     while (ros::ok())
     {
         ROS_INFO("mainLoop");
+        //If block detected override waypoint onto itself-----------------------------------------------------------------------
 
         // Delay so the loop doesn't run too fast
-        ros::Duration(0.2).sleep();
+        // ros::Duration(0.2).sleep(); // ADD back in ----------------------------------------------------
         // std::cout << "map image: " << map_image_ << std::endl;
 
         // if (lock == false)
@@ -807,6 +762,7 @@ void BrickSearch::mainLoop()
 
         //     cv::destroyWindow("map image");
         // }
+
         if (!finished_)
         {
             detection(); //Might be able to remove----------------------
@@ -814,8 +770,10 @@ void BrickSearch::mainLoop()
             if (!override_)
             {
                 double robot_theta = getPose2d().theta;
-                if (getGoalReachedStatus() == 3 || lock == false) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
+                if ((localised_ == true && getGoalReachedStatus() == 3) || getGoalReachedStatus() == 4 || (localised_ == true && lock == false)) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
                 {
+                    // searchedArea(); //Should probs go here
+
                     //For 360 turn
                     // geometry_msgs::Twist twist{};
                     // twist.angular.z = 1.;
@@ -841,9 +799,13 @@ void BrickSearch::mainLoop()
                     lock = true;
                     // move_base_action_client_.waitForResult();
                     // std::cout << "Status: " << (move_base_action_client_.getState() << std::endl;
-                    std::vector<double> goalWaypoint = exploration();
+                    std::vector<double> goalWaypoint;
+                    goalWaypoint.resize(2);
+                    goalWaypoint = exploration();
                     // BrickSearch::pathPlanning(1.5, 3);
+                    // ros::Duration(0.5).sleep();
                     pathPlanning(goalWaypoint.at(0), goalWaypoint.at(1));
+                    // ros::Duration(1).sleep();
                     // move_base_action_client_.waitForResult();
                 }
             }
@@ -852,18 +814,6 @@ void BrickSearch::mainLoop()
         {
             std::cout << "Brick has been located" << std::endl;
         }
-
-        // move_base_action_client_.sendGoal(action_goal.goal);
-
-        // Desired seach x,y position
-        // Covert into required units (x,y or meters)
-
-        // path_planning_algorithm(desired position) - From package or custom?
-
-        // pure_pursuit_algorithm(planned path) - From package or custom? (package probably better?)
-
-        // If box found? - Inside pure_pursuit_algorithm? Or here is ok if pure_pursuit is seperate thread or ROS package
-        // Use open CV to move straight to the box or path planning to recalculate a path to the box position (calulcated using lidar or depth camera with current robot position)
     }
     cv::destroyWindow("track_map");
 }
