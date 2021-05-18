@@ -609,7 +609,7 @@ void BrickSearch::mainLoop()
 
         if (!finished_)
         {
-            detection(); //Might be able to remove----------------------
+            detection();
             searchedArea();
             if (override_ == false)
             {
