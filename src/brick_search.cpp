@@ -430,7 +430,6 @@ void BrickSearch::detection(void)
 
             size_ = publish_image_.size();
             double frameArea = size_.width * size_.height;
-            //Do ratio comparison then initiate takeover?
             ratio = area / frameArea;
             // std::cout << "Contour Area: " << area << std::endl;
             // std::cout << "Frame Area: " << frameArea << std::endl;
