@@ -806,7 +806,7 @@ void BrickSearch::mainLoop()
                     twist.angular.z = 1.;
                     cmd_vel_pub_.publish(twist);
                     ros::Duration(0.5).sleep();
-                    while (1)
+                    while (lock2 == false)
                     {
                         std::cout << "SCANNING" << std::endl;
                         // detection(); //Might be able to remove----------------------
