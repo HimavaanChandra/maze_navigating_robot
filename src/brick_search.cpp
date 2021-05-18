@@ -355,7 +355,7 @@ std::vector<double> BrickSearch::exploration(void)
 
                 cv::Point point1(i, j); // check in case should be (j, i)
 
-                cv::circle(track_map_, point1, 9, cv::Scalar(255, 255, 255), CV_FILLED);
+                cv::circle(track_map_, point1, 10, cv::Scalar(255, 255, 255), CV_FILLED);
             }
         }
     }
@@ -587,7 +587,7 @@ void BrickSearch::detection(void)
                 // calculate y position where current lidar ray ends
                 int ray_y = ranges_.at(i) * sin(map_angle); //Need to add metre to grid-----
                 ray_y = (ray_y + robot_y) / meters_to_pixel_conversion;
-                cv::Point brick(ray_x - 0.5, ray_y - 0.5); // Adjust---------------------------------------------------
+                cv::Point brick(ray_x, ray_y); // Adjust---------------------------------------------------
                 cv::circle(map_image_, brick, 3, CV_RGB(255, 255, 255), 1);
                 imshow("map", map_image_);
                 cv::waitKey(0);
@@ -808,28 +808,35 @@ void BrickSearch::mainLoop()
                     ros::Duration(0.5).sleep();
                     while (lock2 == false)
                     {
+                        ros::Duration(0.05).sleep();
+
                         std::cout << "SCANNING" << std::endl;
-                        // detection(); //Might be able to remove----------------------
-                        // searchedArea();
-                        if (pose >= getPose2d().theta - (2*M_PI/180) && pose <= getPose2d().theta + (2*M_PI/180))
+                        detection(); //Might be able to remove----------------------
+                        searchedArea();
+
+                        if ((pose >= getPose2d().theta - (3 * M_PI / 180) && pose <= getPose2d().theta + (3 * M_PI / 180)) || override_ == true)
                         {
-                            twist.angular.z = 0.;
+                            twist.angular.z = 0.0;
                             cmd_vel_pub_.publish(twist);
                             break;
                         }
                     }
 
-                    lock = true;
-                    // move_base_action_client_.waitForResult();
-                    // std::cout << "Status: " << (move_base_action_client_.getState() << std::endl;
-                    std::vector<double> goalWaypoint;
-                    goalWaypoint.resize(2);
-                    goalWaypoint = exploration();
-                    // BrickSearch::pathPlanning(1.5, 3);
-                    // ros::Duration(0.5).sleep();
-                    pathPlanning(goalWaypoint.at(0), goalWaypoint.at(1));
-                    // ros::Duration(1).sleep();
-                    // move_base_action_client_.waitForResult();
+                    if (override_ == false)
+                    {
+
+                        lock = true;
+                        // move_base_action_client_.waitForResult();
+                        // std::cout << "Status: " << (move_base_action_client_.getState() << std::endl;
+                        std::vector<double> goalWaypoint;
+                        goalWaypoint.resize(2);
+                        goalWaypoint = exploration();
+                        // BrickSearch::pathPlanning(1.5, 3);
+                        // ros::Duration(0.5).sleep();
+                        pathPlanning(goalWaypoint.at(0), goalWaypoint.at(1));
+                        // ros::Duration(1).sleep();
+                        // move_base_action_client_.waitForResult();
+                    }
                 }
             }
         }
