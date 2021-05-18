@@ -6,7 +6,7 @@
 
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
-#include <opencv2/imgcodecs.hpp> // can remove probs -----------------------------------------
+#include <opencv2/imgcodecs.hpp>
 
 #include <ros/ros.h>
 #include <nav_msgs/GetMap.h>
@@ -31,7 +31,6 @@ public:
 
     // Publich methods
     void mainLoop(void);
-    // void detection(void); //Move to private?----------
 
 private:
     // Variables
@@ -40,7 +39,7 @@ private:
     std::atomic<bool> localised_{false};
     std::atomic<bool> brick_found_{false};
     int image_msg_count_ = 0;
-    int goal_reached_status = 3; // 0 = goal not reached 3 = goal reached 4 = Failed to find a valid plan. Even after executing recovery behaviors.
+    int goal_reached_status = 3; // 0 = goal not reached 3 = goal reached 4 = Failed to find a valid plan, even after executing recovery behaviors.
     bool lock = false;
     bool lock2 = false;
 
@@ -52,12 +51,12 @@ private:
     cv::Size size_;
     int cx;
     int cy;
-    const double cutoff = 0.0; //Adjust-----------------------
-    const double final = 0.3;  //Adjust
+    const double cutoff = 0.02; //Adjust
+    const double final = 0.3;   //Adjust
     double ratio;
     bool override_;
     bool finished_;
-    const int pixel_tolerance = 10; //Adjust-------------------
+    const int pixel_tolerance = 10; //Adjust
     bool centred_;
     const int image_size_meters = 20;
     const int image_size_pixel = 384;
@@ -72,14 +71,6 @@ private:
     double waypoint_y_pixel;
     double waypoint_x;
     double waypoint_y;
-
-    // // Structures
-    // struct robot_pose_2d
-    // {
-    //     double x;
-    //     double y;
-    //     double theta;
-    // };
 
     // Transform listener
     tf2_ros::Buffer transform_buffer_{};
@@ -130,7 +121,6 @@ private:
     std::vector<double> exploration(void);
     std::vector<double> randomExploration(void);
     void searchedArea(void);
-    void wallBuffer(void);
 
     int meterY2grid(double y);
     int meterX2grid(double x);
