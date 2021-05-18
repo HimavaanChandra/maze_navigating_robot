@@ -775,7 +775,7 @@ void BrickSearch::mainLoop()
             if (override_ == false)
             {
                 double robot_theta = getPose2d().theta;
-                if ((localised_ == true && getGoalReachedStatus() == 3) || getGoalReachedStatus() == 4 || (localised_ == true && lock == false)) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
+                if (((localised_ == true && getGoalReachedStatus() == 3) || getGoalReachedStatus() == 4 || (localised_ == true && lock == false))&& lock2 == false) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
                 {
                     // searchedArea(); //Should probs go here
 
