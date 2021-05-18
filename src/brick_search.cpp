@@ -587,10 +587,10 @@ void BrickSearch::detection(void)
                 // calculate y position where current lidar ray ends
                 int ray_y = ranges_.at(i) * sin(map_angle); //Need to add metre to grid-----
                 ray_y = (ray_y + robot_y) / meters_to_pixel_conversion;
-                cv::Point brick(ray_x - 0.5, ray_y - 0.5);
-                cv::circle(map_image_, brick, 3, CV_RGB(255, 255, 255), 1); //There is gonna be a overriding problem here
-                imshow("map", map_image_);                                  //Probs delete-------------
-                cv::waitKey(0);                                             //Probs delete------------------------
+                cv::Point brick(ray_x - 0.5, ray_y - 0.5); // Adjust---------------------------------------------------
+                cv::circle(map_image_, brick, 3, CV_RGB(255, 255, 255), 1);
+                imshow("map", map_image_);
+                cv::waitKey(0);
                 //Need to publish image here, could fix by publishing to original map_image_
             }
         }
@@ -775,7 +775,7 @@ void BrickSearch::mainLoop()
             if (override_ == false)
             {
                 double robot_theta = getPose2d().theta;
-                if (((localised_ == true && getGoalReachedStatus() == 3) || getGoalReachedStatus() == 4 || (localised_ == true && lock == false))&& lock2 == false) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
+                if (((localised_ == true && getGoalReachedStatus() == 3) || getGoalReachedStatus() == 4 || (localised_ == true && lock == false)) && lock2 == false) // Only navigate to new goal if the current goal has been reached (goal reached status == 3, goal not reached status == 1) and robot is localised
                 {
                     // searchedArea(); //Should probs go here
 
@@ -800,6 +800,24 @@ void BrickSearch::mainLoop()
                     // {
                     //     break;
                     // }
+
+                    double pose = getPose2d().theta;
+                    geometry_msgs::Twist twist{};
+                    twist.angular.z = 1.;
+                    cmd_vel_pub_.publish(twist);
+                    ros::Duration(0.5).sleep();
+                    while (1)
+                    {
+                        std::cout << "SCANNING" << std::endl;
+                        // detection(); //Might be able to remove----------------------
+                        // searchedArea();
+                        if (pose >= getPose2d().theta - (2*M_PI/180) && pose <= getPose2d().theta + (2*M_PI/180))
+                        {
+                            twist.angular.z = 0.;
+                            cmd_vel_pub_.publish(twist);
+                            break;
+                        }
+                    }
 
                     lock = true;
                     // move_base_action_client_.waitForResult();
