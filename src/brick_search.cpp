@@ -290,7 +290,7 @@ std::vector<double> BrickSearch::exploration(void)
 
                 cv::Point point1(i, j);
 
-                cv::circle(track_map_, point1, 10, cv::Scalar(255, 255, 255), CV_FILLED);
+                cv::circle(track_map_, point1, 9, cv::Scalar(255, 255, 255), CV_FILLED);
             }
         }
     }
@@ -630,7 +630,7 @@ void BrickSearch::mainLoop()
                         detection();
                         searchedArea();
 
-                        if ((pose >= getPose2d().theta - (3 * M_PI / 180) && pose <= getPose2d().theta + (3 * M_PI / 180)) || override_ == true)
+                        if ((pose >= getPose2d().theta - (5 * M_PI / 180) && pose <= getPose2d().theta + (5 * M_PI / 180)) || override_ == true)
                         {
                             twist.angular.z = 0.0;
                             cmd_vel_pub_.publish(twist);
